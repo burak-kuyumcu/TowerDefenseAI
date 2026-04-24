@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tower Defense AI - Three.js</title>
+  </head>
+
+  <body>
+    <canvas id="app"></canvas>
+
+    <div id="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Wave: <span id="wave">1</span></div>
+      <div>Gold: <span id="gold">100</span></div>
+      <div>Base HP: <span id="baseHp">10</span></div>
+      <div>Selected Tower: <span id="selectedTower">Normal</span></div>
+      <div id="gameState">Running</div>
+    </div>
+
+    <div id="help">
+  <div><b>Controls</b></div>
+  <div>Mouse Move: Select tile</div>
+  <div>Left Click Empty Tile: Place tower</div>
+  <div>Left Click Object: Select object</div>
+  <div>Right Click Tower: Sell tower</div>
+  <div>U: Upgrade selected tower</div>
+  <div>Esc: Deselect object</div>
+  <br />
+  <div>1: Normal Tower</div>
+  <div>2: Rapid Tower</div>
+  <div>T: Place tower</div>
+  <br />
+  <div>WASD: Move camera</div>
+  <div>Q/E: Camera up/down</div>
+  <div>Arrow Keys: Move selected object / spotlight</div>
+  <br />
+  <div>O: Toggle spotlight</div>
+  <div>P: Toggle directional light</div>
+  <div>H: Toggle spotlight helper</div>
+  <div>Y/U: Spotlight down/up</div>
+  <div>+/-: Spotlight intensity</div>
+</div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
