@@ -16,7 +16,10 @@
       <div>Gold: <span id="gold">100</span></div>
       <div>Base HP: <span id="baseHp">10</span></div>
       <div>Selected Tower: <span id="selectedTower">Normal</span></div>
+      <div>AI Strategy: <span id="aiStrategy">Balanced</span></div>
+      <div>Shader Mode: <span id="shaderMode">Standard</span></div>
       <div id="gameState">Running</div>
+      <div>Audio: <span id="audioStatus">On</span></div>
     </div>
 
     <div id="help">
@@ -27,9 +30,16 @@
   <div>Right Click Tower: Sell tower</div>
   <div>U: Upgrade selected tower</div>
   <div>Esc: Deselect object</div>
+  <div>M: Toggle shader mode</div>
+  <div>Enter: Start game</div>
+  <div>G: Change selected tower target mode</div>
+  <div>V / Enter: Start Next Wave</div>
   <br />
   <div>1: Normal Tower</div>
   <div>2: Rapid Tower</div>
+  <div>3: Sniper Tower</div>
+  <div>4: Slow Tower</div>
+  <div>5: Splash Tower</div>
   <div>T: Place tower</div>
   <br />
   <div>WASD: Move camera</div>
@@ -41,8 +51,94 @@
   <div>H: Toggle spotlight helper</div>
   <div>Y/U: Spotlight down/up</div>
   <div>+/-: Spotlight intensity</div>
+  <div>Space: Pause / Resume</div>
+  <div>R: Restart game</div>
+  <div>N: Mute / Unmute</div>
 </div>
 
+<div id="overlay">
+  <div id="overlayTitle">Tower Defense AI</div>
+  <div id="overlayText">Press Enter to Start</div>
+</div>
+
+<div id="selectedInfo">
+  <div><b>Selected</b></div>
+  <div id="selectedInfoContent">None</div>
+</div>
+
+<div id="announcer"></div>
+
+<canvas id="minimap" width="180" height="180"></canvas>
+
+<div id="actionPanel">
+  <div><b>Actions</b></div>
+  <button id="upgradeButton">Upgrade Tower</button>
+  <button id="sellButton">Sell Tower</button>
+</div>
+
+<button id="settingsButton">⚙️</button>
+
+<div id="settingsPanel" class="hidden">
+  <div class="settings-card">
+    <div class="settings-title">Settings</div>
+
+    <button id="settingsSoundButton">Sound: On</button>
+    <button id="settingsShaderButton">Shader: Standard</button>
+    <button id="settingsPauseButton">Pause</button>
+    <button id="settingsRestartButton">Restart Game</button>
+
+    <div class="settings-about">
+      <b>About Game</b>
+      <p>
+        Tower Defense AI is a 3D strategy game where the enemy AI adapts to your tower choices.
+      </p>
+    </div>
+
+    <button id="settingsCloseButton">Close</button>
+  </div>
+</div>
+
+<div id="buildPanel">
+  <div class="build-title">Build Towers</div>
+
+  <button class="build-button" data-tower="normal">
+    Normal <span>25G</span>
+  </button>
+
+  <button class="build-button" data-tower="rapid">
+    Rapid <span>30G</span>
+  </button>
+
+  <button class="build-button" data-tower="sniper">
+    Sniper <span>45G</span>
+  </button>
+
+  <button class="build-button" data-tower="slow">
+    Slow <span>35G</span>
+  </button>
+
+  <button class="build-button" data-tower="splash">
+    Splash <span>50G</span>
+  </button>
+</div>
+
+<div id="bossHud" class="hidden">
+  <div id="bossName">BOSS</div>
+  <div id="bossHpBar">
+    <div id="bossHpFill"></div>
+  </div>
+</div>
+
+<div id="wavePreview">
+  <div class="wave-preview-title">Next Wave</div>
+  <div id="wavePreviewContent">Waiting...</div>
+  <button id="startWaveButton">Start Next Wave</button>
+</div>
+
+<div id="eventLog">
+  <div class="event-log-title">Battle Log</div>
+  <div id="eventLogContent"></div>
+</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

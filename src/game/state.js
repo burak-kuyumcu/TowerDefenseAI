@@ -1,12 +1,25 @@
+import { PATHS } from "../core/constants.js";
+
 export const state = {
   selectedTile: { x: -4, z: -4 },
   selectedTowerType: "normal",
   selectedObject: null,
 
+  currentPath: PATHS[0],
+
+  shaderMode: "standard",
+  paused: false,
+  muted: false,
+  started: false,
+
+  waveActive: false,
+  waitingForNextWave: true,
+
   score: 0,
   gold: 100,
   wave: 1,
   baseHp: 10,
+  baseMaxHp: 10,
   gameOver: false,
 
   spawned: 0,

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { state } from "./state.js";
-import { GRID_MIN, GRID_MAX } from "../core/constants.js";
+import { GRID_MIN, GRID_MAX, pathSet } from "../core/constants.js";
 import { updateTowerOccupiedKey } from "./towers.js";
 
 export function updateCamera(camera, keys) {
@@ -37,24 +37,36 @@ export function updateLights(spotLight, spotLightHelper, keys) {
 export function moveSelectedObject(keys) {
   if (!state.selectedObject) return;
 
+  const selected = state.selectedObject;
+  const isTower = state.towers.includes(selected);
+
+  const oldX = selected.position.x;
+  const oldZ = selected.position.z;
+
   const speed = 0.08;
 
-  if (keys["ArrowUp"]) state.selectedObject.position.z -= speed;
-  if (keys["ArrowDown"]) state.selectedObject.position.z += speed;
-  if (keys["ArrowLeft"]) state.selectedObject.position.x -= speed;
-  if (keys["ArrowRight"]) state.selectedObject.position.x += speed;
+  if (keys["ArrowUp"]) selected.position.z -= speed;
+  if (keys["ArrowDown"]) selected.position.z += speed;
+  if (keys["ArrowLeft"]) selected.position.x -= speed;
+  if (keys["ArrowRight"]) selected.position.x += speed;
 
-  state.selectedObject.position.x = THREE.MathUtils.clamp(
-    state.selectedObject.position.x,
-    GRID_MIN,
-    GRID_MAX
-  );
+  selected.position.x = THREE.MathUtils.clamp(selected.position.x, GRID_MIN, GRID_MAX);
+  selected.position.z = THREE.MathUtils.clamp(selected.position.z, GRID_MIN, GRID_MAX);
 
-  state.selectedObject.position.z = THREE.MathUtils.clamp(
-    state.selectedObject.position.z,
-    GRID_MIN,
-    GRID_MAX
-  );
+  if (isTower) {
+    const newKey = `${Math.round(selected.position.x)},${Math.round(selected.position.z)}`;
+    const oldKey = selected.userData.occupiedKey;
 
-  updateTowerOccupiedKey(state.selectedObject);
+    const blockedByPath = pathSet.has(newKey);
+    const blockedByTower =
+      state.towerSet.has(newKey) && newKey !== oldKey;
+
+    if (blockedByPath || blockedByTower) {
+      selected.position.x = oldX;
+      selected.position.z = oldZ;
+      return;
+    }
+
+    updateTowerOccupiedKey(selected);
+  }
 }

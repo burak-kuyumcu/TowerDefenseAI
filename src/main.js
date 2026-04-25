@@ -8,18 +8,46 @@ import { state } from "./game/state.js";
 import {
   placeTower,
   updateTowers,
-  getClickedTower
+  getClickedTower,
+  cycleSelectedTowerTargetMode
 } from "./game/towers.js";
 
+import { upgradeSelectedTower, sellTower } from "./game/upgrade.js";
+
 import {
-  upgradeSelectedTower,
-  sellTower
-} from "./game/upgrade.js";
+  updateWave,
+  initWaveControls,
+  updateWaveControls,
+  startNextWave
+} from "./game/wave.js";
 
 import { updateEnemies, cleanupEnemies } from "./game/enemies.js";
-import { updateWave } from "./game/wave.js";
 import { updateProjectiles } from "./game/projectiles.js";
+import { updateHealthBars } from "./game/healthBars.js";
+import { updateEffects } from "./game/effects.js";
 import { updateHud } from "./game/hud.js";
+import { updateOverlay } from "./game/overlay.js";
+import { updateMinimap } from "./game/minimap.js";
+import { updateSelectedInfo } from "./game/selectedInfo.js";
+import { updateAnnouncer } from "./game/announcer.js";
+import { updateBossHud } from "./game/bossHud.js";
+import { updateWavePreview } from "./game/wavePreview.js";
+import { updateEventLog } from "./game/eventLog.js";
+
+import { initUIActions, updateUIActions } from "./game/uiActions.js";
+import { initSettingsPanel, updateSettingsPanel } from "./game/settingsPanel.js";
+import { initBuildPanel, updateBuildPanel } from "./game/buildPanel.js";
+
+import { toggleShaderMode } from "./game/materials.js";
+import { startGame, togglePause, restartGame } from "./game/gameFlow.js";
+import { initBaseSystem, updateBaseSystem } from "./game/base.js";
+import { toggleMute } from "./game/audio.js";
+import { updateBossAbilities } from "./game/bossAbilities.js";
+
+import {
+  createRangePreview,
+  updateRangePreview
+} from "./game/rangePreview.js";
 
 import {
   updateSelectorFromMouse,
@@ -43,10 +71,17 @@ const {
   directionalLight,
   spotLight,
   spotLightHelper,
-  selector
+  selector,
+  base
 } = createSceneSetup(canvas);
 
 initKeyboard();
+createRangePreview(scene);
+initBaseSystem(scene, base);
+initUIActions(scene);
+initSettingsPanel(scene);
+initBuildPanel();
+initWaveControls(scene);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -59,21 +94,79 @@ const pickingPlane = new THREE.Mesh(
 pickingPlane.rotation.x = -Math.PI / 2;
 scene.add(pickingPlane);
 
+function isUIElement(target) {
+  return target.closest(
+    "#hud, #help, #selectedInfo, #actionPanel, #overlay, #minimap, #settingsButton, #settingsPanel, #buildPanel, #bossHud, #wavePreview, #eventLog"
+  );
+}
+
 window.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    if (!state.started) {
+      startGame();
+    } else {
+      startNextWave(scene);
+    }
+    return;
+  }
+
+  if (e.key === "v" || e.key === "V") {
+    startNextWave(scene);
+    return;
+  }
+
+  if (e.code === "Space") {
+    e.preventDefault();
+    togglePause();
+    return;
+  }
+
+  if (e.key === "r" || e.key === "R") {
+    restartGame(scene);
+    return;
+  }
+
+  if (e.key === "n" || e.key === "N") {
+    toggleMute();
+    return;
+  }
+
+  if (!state.started || state.gameOver) return;
+
   if (e.key === "1") state.selectedTowerType = "normal";
   if (e.key === "2") state.selectedTowerType = "rapid";
+  if (e.key === "3") state.selectedTowerType = "sniper";
+  if (e.key === "4") state.selectedTowerType = "slow";
+  if (e.key === "5") state.selectedTowerType = "splash";
 
   if (e.key === "t" || e.key === "T") placeTower(scene);
   if (e.key === "u" || e.key === "U") upgradeSelectedTower();
 
-  if (e.key === "o" || e.key === "O") spotLight.visible = !spotLight.visible;
-  if (e.key === "p" || e.key === "P") directionalLight.visible = !directionalLight.visible;
-  if (e.key === "h" || e.key === "H") spotLightHelper.visible = !spotLightHelper.visible;
+  if (e.key === "g" || e.key === "G") cycleSelectedTowerTargetMode();
 
-  if (e.key === "Escape") state.selectedObject = null;
+  if (e.key === "m" || e.key === "M") toggleShaderMode(scene);
+
+  if (e.key === "o" || e.key === "O") {
+    spotLight.visible = !spotLight.visible;
+  }
+
+  if (e.key === "p" || e.key === "P") {
+    directionalLight.visible = !directionalLight.visible;
+  }
+
+  if (e.key === "h" || e.key === "H") {
+    spotLightHelper.visible = !spotLightHelper.visible;
+  }
+
+  if (e.key === "Escape") {
+    state.selectedObject = null;
+  }
 });
 
 window.addEventListener("mousemove", (e) => {
+  if (!state.started) return;
+  if (isUIElement(e.target)) return;
+
   updateSelectorFromMouse(
     e.clientX,
     e.clientY,
@@ -86,6 +179,9 @@ window.addEventListener("mousemove", (e) => {
 });
 
 window.addEventListener("click", (e) => {
+  if (isUIElement(e.target)) return;
+  if (!state.started || state.gameOver || state.paused) return;
+
   const selected = handleSelectionClick(
     e,
     renderer,
@@ -112,6 +208,9 @@ window.addEventListener("click", (e) => {
 window.addEventListener("contextmenu", (e) => {
   e.preventDefault();
 
+  if (isUIElement(e.target)) return;
+  if (!state.started || state.gameOver || state.paused) return;
+
   const clickedTower = getClickedTower(
     raycaster,
     mouse,
@@ -129,18 +228,25 @@ window.addEventListener("contextmenu", (e) => {
 function animate() {
   requestAnimationFrame(animate);
 
-  if (!state.gameOver) {
+  if (state.started && !state.gameOver && !state.paused) {
     updateCamera(camera, keys);
     updateLights(spotLight, spotLightHelper, keys);
     moveSelectedObject(keys);
 
     updateSelector(selector);
+
     updateWave(scene);
     updateEnemies(scene);
+    updateBossAbilities(scene);
     updateTowers(scene);
     updateProjectiles(scene);
-    cleanupEnemies();
+    updateHealthBars(camera);
+    updateBaseSystem(camera);
+    updateEffects(scene);
+    cleanupEnemies(scene);
+
     updateHighlights();
+    updateRangePreview();
 
     if (state.baseHp <= 0) {
       state.baseHp = 0;
@@ -148,7 +254,26 @@ function animate() {
     }
   }
 
+  if (!state.started || state.paused || state.gameOver) {
+    updateSelector(selector);
+    updateHighlights();
+    updateRangePreview();
+    updateBaseSystem(camera);
+  }
+
   updateHud();
+  updateOverlay();
+  updateMinimap();
+  updateSelectedInfo();
+  updateAnnouncer();
+  updateBossHud();
+  updateWavePreview();
+  updateUIActions();
+  updateSettingsPanel();
+  updateBuildPanel();
+  updateWaveControls();
+  updateEventLog();
+
   renderer.render(scene, camera);
 }
 

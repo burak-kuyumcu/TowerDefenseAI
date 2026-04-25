@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { state } from "./state.js";
 import { GRID_MIN, GRID_MAX } from "../core/constants.js";
+import { updatePlacementVisual } from "./placement.js";
 
 export function updateSelectorFromMouse(
   clientX,
@@ -17,21 +18,24 @@ export function updateSelectorFromMouse(
   mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
-  const hit = raycaster.intersectObject(pickingPlane);
 
-  if (hit.length) {
-    state.selectedTile.x = THREE.MathUtils.clamp(
-      Math.round(hit[0].point.x),
-      GRID_MIN,
-      GRID_MAX
-    );
+  const hits = raycaster.intersectObject(pickingPlane);
 
-    state.selectedTile.z = THREE.MathUtils.clamp(
-      Math.round(hit[0].point.z),
-      GRID_MIN,
-      GRID_MAX
-    );
-  }
+  if (hits.length === 0) return;
+
+  const point = hits[0].point;
+
+  state.selectedTile.x = THREE.MathUtils.clamp(
+    Math.round(point.x),
+    GRID_MIN,
+    GRID_MAX
+  );
+
+  state.selectedTile.z = THREE.MathUtils.clamp(
+    Math.round(point.z),
+    GRID_MIN,
+    GRID_MAX
+  );
 }
 
 export function updateSelector(selector) {
@@ -40,35 +44,23 @@ export function updateSelector(selector) {
     0.05,
     state.selectedTile.z
   );
-}
 
-export function updateHighlights() {
-  for (const tower of state.towers) {
-    tower.material.emissive.set(0x000000);
-  }
-
-  for (const enemy of state.enemies) {
-    enemy.material.emissive.set(0x000000);
-  }
-
-  if (state.selectedObject && state.selectedObject.material.emissive) {
-    state.selectedObject.material.emissive.set(0xffff00);
-  }
+  updatePlacementVisual(selector);
 }
 
 export function handleSelectionClick(
-  e,
+  event,
   renderer,
   camera,
   raycaster,
   mouse
 ) {
-  if (e.button !== 0) return false;
+  if (event.button !== 0) return false;
 
   const rect = renderer.domElement.getBoundingClientRect();
 
-  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
 
@@ -82,4 +74,30 @@ export function handleSelectionClick(
 
   state.selectedObject = null;
   return false;
+}
+
+export function updateHighlights() {
+  for (const tower of state.towers) {
+    if (!tower.material?.emissive) continue;
+
+    if (tower === state.selectedObject) {
+      tower.material.emissive.set(0xffff00);
+    } else if (tower.userData.slowTimer > 0) {
+      tower.material.emissive.set(0x581c87);
+    } else {
+      tower.material.emissive.set(0x000000);
+    }
+  }
+
+  for (const enemy of state.enemies) {
+    if (!enemy.material?.emissive) continue;
+
+    if (enemy === state.selectedObject) {
+      enemy.material.emissive.set(0xffff00);
+    } else if (enemy.userData.slowTimer > 0) {
+      enemy.material.emissive.set(0x14b8a6);
+    } else {
+      enemy.material.emissive.set(0x000000);
+    }
+  }
 }

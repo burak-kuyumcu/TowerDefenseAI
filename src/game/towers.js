@@ -1,19 +1,29 @@
 import * as THREE from "three";
 import { state } from "./state.js";
-import { pathSet } from "../core/constants.js";
 import { shoot } from "./projectiles.js";
+import { createGameMaterial } from "./materials.js";
+import { createTowerLabel, updateTowerLabelText } from "./towerLabels.js";
+import { getPlacementState } from "./placement.js";
+
+const TARGET_MODES = ["nearest", "first", "strongest", "weakest"];
 
 export function placeTower(scene) {
+  if (getPlacementState() !== "valid") return;
+
   const key = `${state.selectedTile.x},${state.selectedTile.z}`;
-
-  if (pathSet.has(key)) return;
-  if (state.towerSet.has(key)) return;
-
   const config = getTowerConfig(state.selectedTowerType);
-  if (state.gold < config.cost) return;
 
-  const tower = new THREE.Mesh(config.geometry, config.material.clone());
-  tower.position.set(state.selectedTile.x, config.height / 2, state.selectedTile.z);
+  const tower = new THREE.Mesh(
+    config.geometry,
+    createGameMaterial(config.color)
+  );
+
+  tower.position.set(
+    state.selectedTile.x,
+    config.height / 2,
+    state.selectedTile.z
+  );
+
   tower.castShadow = true;
   tower.receiveShadow = true;
 
@@ -25,30 +35,78 @@ export function placeTower(scene) {
     fireRate: config.fireRate,
     damage: config.damage,
     occupiedKey: key,
-    selectable: true
+    selectable: true,
+    baseColor: config.color,
+    targetMode: config.defaultTargetMode ?? "nearest",
+
+    slowEffect: config.slowEffect ?? null,
+    splashEffect: config.splashEffect ?? null,
+
+    slowTimer: 0,
+    slowMultiplier: 1
   };
 
   scene.add(tower);
   state.towers.push(tower);
   state.towerSet.add(key);
 
+  createTowerLabel(scene, tower);
+
   state.gold -= config.cost;
+
+  spawnPlaceEffect(scene, tower.position);
 }
 
 export function updateTowers(scene) {
   for (const tower of state.towers) {
+    updateTowerSlowState(tower);
+
     if (tower.userData.cooldown > 0) {
       tower.userData.cooldown--;
       continue;
     }
 
-    const target = findNearestEnemy(tower);
+    const target = findTargetEnemy(tower);
 
     if (target) {
       shoot(scene, tower, target);
-      tower.userData.cooldown = tower.userData.fireRate;
+
+      const slowMultiplier = tower.userData.slowMultiplier ?? 1;
+
+      tower.userData.cooldown = Math.floor(
+        tower.userData.fireRate * slowMultiplier
+      );
     }
   }
+}
+
+export function cycleSelectedTowerTargetMode() {
+  if (!state.selectedObject) return;
+  if (!state.towers.includes(state.selectedObject)) return;
+
+  const tower = state.selectedObject;
+  const currentMode = tower.userData.targetMode ?? "nearest";
+  const currentIndex = TARGET_MODES.indexOf(currentMode);
+
+  const nextIndex = (currentIndex + 1) % TARGET_MODES.length;
+  tower.userData.targetMode = TARGET_MODES[nextIndex];
+
+  updateTowerLabelText(tower);
+}
+
+function updateTowerSlowState(tower) {
+  if (tower.userData.slowTimer > 0) {
+    tower.userData.slowTimer--;
+    tower.userData.slowMultiplier = 1.8;
+
+    if (tower.material?.emissive) {
+      tower.material.emissive.set(0x581c87);
+    }
+
+    return;
+  }
+
+  tower.userData.slowMultiplier = 1;
 }
 
 export function getClickedTower(raycaster, mouse, renderer, camera, clientX, clientY) {
@@ -71,50 +129,156 @@ export function updateTowerOccupiedKey(tower) {
 
   if (oldKey === newKey) return;
 
-  if (oldKey) state.towerSet.delete(oldKey);
+  if (oldKey) {
+    state.towerSet.delete(oldKey);
+  }
 
   tower.userData.occupiedKey = newKey;
   state.towerSet.add(newKey);
 }
 
-function findNearestEnemy(tower) {
-  let nearest = null;
-  let nearestDistance = Infinity;
-
-  for (const enemy of state.enemies) {
-    if (enemy.userData.dead) continue;
+function getEnemiesInRange(tower) {
+  return state.enemies.filter((enemy) => {
+    if (enemy.userData.dead) return false;
 
     const distance = tower.position.distanceTo(enemy.position);
+    return distance <= tower.userData.range;
+  });
+}
 
-    if (distance <= tower.userData.range && distance < nearestDistance) {
-      nearest = enemy;
-      nearestDistance = distance;
-    }
+function findTargetEnemy(tower) {
+  const enemies = getEnemiesInRange(tower);
+
+  if (enemies.length === 0) return null;
+
+  const mode = tower.userData.targetMode ?? "nearest";
+
+  if (mode === "first") {
+    return enemies.sort((a, b) => {
+      if (b.userData.index !== a.userData.index) {
+        return b.userData.index - a.userData.index;
+      }
+
+      return a.position.distanceTo(tower.position) -
+        b.position.distanceTo(tower.position);
+    })[0];
   }
 
-  return nearest;
+  if (mode === "strongest") {
+    return enemies.sort((a, b) => b.userData.health - a.userData.health)[0];
+  }
+
+  if (mode === "weakest") {
+    return enemies.sort((a, b) => a.userData.health - b.userData.health)[0];
+  }
+
+  return enemies.sort((a, b) => {
+    return a.position.distanceTo(tower.position) -
+      b.position.distanceTo(tower.position);
+  })[0];
 }
 
 function getTowerConfig(type) {
   if (type === "rapid") {
     return {
       geometry: new THREE.CylinderGeometry(0.35, 0.45, 0.9, 16),
-      material: new THREE.MeshStandardMaterial({ color: 0x38bdf8 }),
+      color: 0x38bdf8,
       height: 0.9,
       range: 2.7,
       fireRate: 18,
       damage: 1,
-      cost: 30
+      cost: 30,
+      defaultTargetMode: "weakest"
     };
   }
 
+  if (type === "sniper") {
+    return {
+      geometry: new THREE.ConeGeometry(0.45, 1.45, 5),
+      color: 0xa855f7,
+      height: 1.45,
+      range: 6.2,
+      fireRate: 95,
+      damage: 6,
+      cost: 45,
+      defaultTargetMode: "strongest"
+    };
+  }
+
+  if (type === "slow") {
+    return {
+      geometry: new THREE.CylinderGeometry(0.45, 0.55, 1.05, 20),
+      color: 0x14b8a6,
+      height: 1.05,
+      range: 3.7,
+      fireRate: 60,
+      damage: 1,
+      cost: 35,
+      defaultTargetMode: "first",
+      slowEffect: {
+        multiplier: 0.45,
+        duration: 150
+      }
+    };
+  }
+
+  if (type === "splash") {
+    return {
+      geometry: new THREE.SphereGeometry(0.55, 18, 18),
+      color: 0xf97316,
+      height: 1.1,
+      range: 4.2,
+      fireRate: 75,
+      damage: 4,
+      cost: 50,
+      defaultTargetMode: "first",
+      splashEffect: {
+        radius: 2.1,
+        damage: 3
+      }
+    };
+  }
   return {
     geometry: new THREE.BoxGeometry(0.8, 1.2, 0.8),
-    material: new THREE.MeshStandardMaterial({ color: 0x2563eb }),
+    color: 0x2563eb,
     height: 1.2,
     range: 3.2,
     fireRate: 45,
     damage: 2,
-    cost: 25
+    cost: 25,
+    defaultTargetMode: "nearest"
   };
+}
+
+function spawnPlaceEffect(scene, position) {
+  const mesh = new THREE.Mesh(
+    new THREE.RingGeometry(0.3, 0.6, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x22c55e,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    })
+  );
+
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.copy(position);
+  mesh.position.y = 0.05;
+
+  scene.add(mesh);
+
+  let life = 20;
+
+  const interval = setInterval(() => {
+    mesh.scale.multiplyScalar(1.1);
+    mesh.material.opacity *= 0.85;
+    life--;
+
+    if (life <= 0) {
+      scene.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+      clearInterval(interval);
+    }
+  }, 16);
 }
