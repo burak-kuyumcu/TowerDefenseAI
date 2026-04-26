@@ -34,6 +34,7 @@ export function placeTower(scene) {
     range: config.range,
     fireRate: config.fireRate,
     damage: config.damage,
+    critChance: config.critChance,
     occupiedKey: key,
     selectable: true,
     baseColor: config.color,
@@ -187,6 +188,7 @@ function getTowerConfig(type) {
       range: 2.7,
       fireRate: 18,
       damage: 1,
+      critChance: 0.08,
       cost: 30,
       defaultTargetMode: "weakest"
     };
@@ -200,6 +202,7 @@ function getTowerConfig(type) {
       range: 6.2,
       fireRate: 95,
       damage: 6,
+      critChance: 0.28,
       cost: 45,
       defaultTargetMode: "strongest"
     };
@@ -213,6 +216,7 @@ function getTowerConfig(type) {
       range: 3.7,
       fireRate: 60,
       damage: 1,
+      critChance: 0.06,
       cost: 35,
       defaultTargetMode: "first",
       slowEffect: {
@@ -230,6 +234,7 @@ function getTowerConfig(type) {
       range: 4.2,
       fireRate: 75,
       damage: 4,
+      critChance: 0.12,
       cost: 50,
       defaultTargetMode: "first",
       splashEffect: {
@@ -238,6 +243,7 @@ function getTowerConfig(type) {
       }
     };
   }
+
   return {
     geometry: new THREE.BoxGeometry(0.8, 1.2, 0.8),
     color: 0x2563eb,
@@ -245,6 +251,7 @@ function getTowerConfig(type) {
     range: 3.2,
     fireRate: 45,
     damage: 2,
+    critChance: 0.1,
     cost: 25,
     defaultTargetMode: "nearest"
   };

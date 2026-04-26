@@ -68,16 +68,26 @@ export function createSceneSetup(canvas) {
   grid.position.y = 0.02;
   scene.add(grid);
 
-  const pathMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+  const pathMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8b5a2b,
+    emissive: 0x000000
+  });
 
   pathTiles.forEach((p) => {
     const tile = new THREE.Mesh(
       new THREE.BoxGeometry(1, 0.1, 1),
-      pathMaterial
+      pathMaterial.clone()
     );
 
     tile.position.set(p.x, 0.05, p.z);
     tile.receiveShadow = true;
+
+    tile.userData = {
+      isPathTile: true,
+      pathKey: `${p.x},${p.z}`,
+      baseColor: 0x8b5a2b
+    };
+
     scene.add(tile);
   });
 

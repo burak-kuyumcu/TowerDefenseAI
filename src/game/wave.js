@@ -2,6 +2,9 @@ import { state } from "./state.js";
 import { spawnEnemy } from "./enemies.js";
 import { showAnnouncement } from "./announcer.js";
 import { addEventLog } from "./eventLog.js";
+import { getAIStrategyName } from "./aiDirector.js";
+import { resetRelocationsForPreparation } from "./relocation.js";
+import { spawnTacticalSignal } from "./tacticalSignals.js";
 import { PATHS } from "../core/constants.js";
 
 let initialized = false;
@@ -52,19 +55,28 @@ export function startNextWave(scene) {
   if (state.waveActive) return;
   if (state.enemies.length > 0) return;
 
-  selectPathForWave();
+  const strategy = getAIStrategyName();
+  const feintApplied = maybeApplyPathFeint();
+
+  spawnTacticalSignal(scene, strategy);
 
   state.spawned = 0;
   state.spawnTimer = 0;
   state.waveActive = true;
   state.waitingForNextWave = false;
 
+  if (feintApplied) {
+    showAnnouncement("⚠ AI FEINT DETECTED! Route changed!");
+    addEventLog(`AI feint detected. Route changed before Wave ${state.wave}.`);
+    return;
+  }
+
   if (state.wave % 5 === 0) {
-    showAnnouncement("💀 BOSS WAVE STARTED!");
-    addEventLog(`Boss Wave ${state.wave} started.`);
+    showAnnouncement("AI Adapting: Boss Assault");
+    addEventLog(`Boss Wave ${state.wave} started. AI: ${strategy}.`);
   } else {
-    showAnnouncement(`Wave ${state.wave} Started!`);
-    addEventLog(`Wave ${state.wave} started.`);
+    showAnnouncement(`AI Adapting: ${strategy}`);
+    addEventLog(`Wave ${state.wave} started. AI: ${strategy}.`);
   }
 }
 
@@ -107,15 +119,24 @@ function completeWave(completedWaveWasBoss) {
   );
 
   state.wave++;
+
+  selectPathForWave();
+
   state.spawned = 0;
   state.spawnTimer = 0;
 
   state.waveActive = false;
   state.waitingForNextWave = true;
 
+  resetRelocationsForPreparation();
+
   if (!completedWaveWasBoss) {
     state.enemiesPerWave += 1;
   }
+
+  addEventLog(
+    `Preparation phase. ${state.relocationTokens} tower relocations available.`
+  );
 }
 
 function selectPathForWave() {
@@ -126,4 +147,25 @@ function selectPathForWave() {
 
   const randomIndex = Math.floor(Math.random() * PATHS.length);
   state.currentPath = PATHS[randomIndex];
+}
+
+function maybeApplyPathFeint() {
+  const isBossWave = state.wave % 5 === 0;
+  const earlyWave = state.wave <= 2;
+
+  if (isBossWave || earlyWave) return false;
+
+  const feintChance = 0.25;
+
+  if (Math.random() > feintChance) return false;
+
+  const currentIndex = PATHS.indexOf(state.currentPath);
+  const possiblePaths = PATHS.filter((_, index) => index !== currentIndex);
+
+  if (possiblePaths.length === 0) return false;
+
+  const randomIndex = Math.floor(Math.random() * possiblePaths.length);
+  state.currentPath = possiblePaths[randomIndex];
+
+  return true;
 }

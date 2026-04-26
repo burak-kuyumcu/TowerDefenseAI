@@ -7,6 +7,9 @@ import {
   spawnDeathExplosion,
   spawnSplashEffect
 } from "./effects.js";
+import { spawnFloatingText } from "./floatingText.js";
+import { registerKill } from "./combo.js";
+import { spawnSplitterChildren } from "./bossAbilities.js";
 import { playShootSound, playExplosionSound } from "./audio.js";
 
 export function shoot(scene, tower, enemy) {
@@ -22,12 +25,7 @@ export function shoot(scene, tower, enemy) {
     createGameMaterial(color)
   );
 
-  bullet.position.set(
-    tower.position.x,
-    tower.position.y + 0.5,
-    tower.position.z
-  );
-
+  bullet.position.set(tower.position.x, tower.position.y + 0.5, tower.position.z);
   bullet.castShadow = true;
   bullet.receiveShadow = true;
 
@@ -35,6 +33,7 @@ export function shoot(scene, tower, enemy) {
     target: enemy,
     speed: tower.userData.type === "sniper" ? 0.32 : 0.2,
     damage: tower.userData.damage,
+    critChance: tower.userData.critChance ?? 0.1,
     dead: false,
     baseColor: color,
     slowEffect: tower.userData.slowEffect ?? null,
@@ -59,15 +58,22 @@ export function updateProjectiles(scene) {
       continue;
     }
 
-    const dir = new THREE.Vector3().subVectors(
-      target.position,
-      projectile.position
-    );
-
+    const dir = new THREE.Vector3().subVectors(target.position, projectile.position);
     const distance = dir.length();
 
     if (distance < 0.25) {
-      damageEnemy(scene, target, projectile.userData.damage);
+      const hitResult = buildHitResult(
+        projectile.userData.damage,
+        projectile.userData.critChance
+      );
+
+      damageEnemy(
+        scene,
+        target,
+        hitResult.damage,
+        hitResult.isCrit ? "#fb923c" : "#facc15",
+        hitResult.isCrit
+      );
 
       applySlowEffect(target, projectile.userData.slowEffect);
       spawnHitEffect(scene, target.position);
@@ -76,7 +82,8 @@ export function updateProjectiles(scene) {
         applySplashDamage(
           scene,
           target.position,
-          projectile.userData.splashEffect
+          projectile.userData.splashEffect,
+          hitResult.isCrit
         );
       }
 
@@ -86,15 +93,22 @@ export function updateProjectiles(scene) {
       continue;
     }
 
-    projectile.position.add(
-      dir.normalize().multiplyScalar(projectile.userData.speed)
-    );
+    projectile.position.add(dir.normalize().multiplyScalar(projectile.userData.speed));
   }
 
   cleanupProjectiles();
 }
 
-function damageEnemy(scene, enemy, damage) {
+function buildHitResult(baseDamage, critChance) {
+  const isCrit = Math.random() < critChance;
+
+  return {
+    isCrit,
+    damage: isCrit ? baseDamage * 2 : baseDamage
+  };
+}
+
+function damageEnemy(scene, enemy, damage, color = "#ffffff", isCrit = false) {
   if (!enemy || enemy.userData.dead) return;
 
   let finalDamage = damage;
@@ -105,8 +119,19 @@ function damageEnemy(scene, enemy, damage) {
 
   enemy.userData.health -= finalDamage;
 
+  spawnFloatingText(
+    scene,
+    isCrit ? `CRIT -${Math.ceil(finalDamage)}` : `-${Math.ceil(finalDamage)}`,
+    enemy.position,
+    color
+  );
+
   if (enemy.userData.health <= 0) {
     enemy.userData.dead = true;
+
+    if (enemy.userData.type === "boss_splitter") {
+      spawnSplitterChildren(scene, enemy);
+    }
 
     spawnDeathExplosion(scene, enemy.position);
     playExplosionSound();
@@ -114,14 +139,15 @@ function damageEnemy(scene, enemy, damage) {
     scene.remove(enemy);
     removeHealthBar(scene, enemy);
 
-    state.score += enemy.userData.score ?? 10;
+    registerKill(enemy.userData.score ?? 10);
     state.gold += enemy.userData.gold ?? 5;
   }
 }
 
-function applySplashDamage(scene, centerPosition, splashEffect) {
+function applySplashDamage(scene, centerPosition, splashEffect, mainHitWasCrit = false) {
   const radius = splashEffect.radius ?? 1.2;
-  const damage = splashEffect.damage ?? 1;
+  const baseDamage = splashEffect.damage ?? 1;
+  const damage = mainHitWasCrit ? baseDamage * 2 : baseDamage;
 
   spawnSplashEffect(scene, centerPosition, radius);
 
@@ -131,7 +157,7 @@ function applySplashDamage(scene, centerPosition, splashEffect) {
     const distance = enemy.position.distanceTo(centerPosition);
 
     if (distance <= radius) {
-      damageEnemy(scene, enemy, damage);
+      damageEnemy(scene, enemy, damage, "#fb923c", mainHitWasCrit);
       spawnHitEffect(scene, enemy.position);
     }
   }

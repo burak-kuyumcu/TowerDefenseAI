@@ -7,6 +7,18 @@ export function updateHud() {
   document.querySelector("#gold").textContent = state.gold;
   document.querySelector("#baseHp").textContent = state.baseHp;
 
+  const comboEl = document.querySelector("#combo");
+  if (comboEl) {
+    comboEl.textContent = state.combo > 1 ? `x${state.combo}` : "-";
+  }
+
+  const relocationEl = document.querySelector("#relocations");
+  if (relocationEl) {
+    relocationEl.textContent = state.waitingForNextWave
+      ? state.relocationTokens
+      : "-";
+  }
+
   document.querySelector("#selectedTower").textContent =
     formatTowerType(state.selectedTowerType);
 
@@ -37,7 +49,9 @@ export function updateHud() {
       ? "GAME OVER"
       : state.paused
         ? "Paused"
-        : "Running";
+        : state.waveActive
+          ? "Wave Running"
+          : "Preparing";
 }
 
 function formatTowerType(type) {

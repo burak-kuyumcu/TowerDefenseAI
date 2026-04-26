@@ -25,6 +25,10 @@ import { updateEnemies, cleanupEnemies } from "./game/enemies.js";
 import { updateProjectiles } from "./game/projectiles.js";
 import { updateHealthBars } from "./game/healthBars.js";
 import { updateEffects } from "./game/effects.js";
+import { updateFloatingTexts } from "./game/floatingText.js";
+import { updateTacticalSignals } from "./game/tacticalSignals.js";
+import { updateCombo } from "./game/combo.js";
+
 import { updateHud } from "./game/hud.js";
 import { updateOverlay } from "./game/overlay.js";
 import { updateMinimap } from "./game/minimap.js";
@@ -33,6 +37,8 @@ import { updateAnnouncer } from "./game/announcer.js";
 import { updateBossHud } from "./game/bossHud.js";
 import { updateWavePreview } from "./game/wavePreview.js";
 import { updateEventLog } from "./game/eventLog.js";
+import { updateAIFeedback } from "./game/aiFeedback.js";
+import { initPathVisuals, updatePathVisuals } from "./game/pathVisuals.js";
 
 import { initUIActions, updateUIActions } from "./game/uiActions.js";
 import { initSettingsPanel, updateSettingsPanel } from "./game/settingsPanel.js";
@@ -82,6 +88,7 @@ initUIActions(scene);
 initSettingsPanel(scene);
 initBuildPanel();
 initWaveControls(scene);
+initPathVisuals(scene);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -96,7 +103,7 @@ scene.add(pickingPlane);
 
 function isUIElement(target) {
   return target.closest(
-    "#hud, #help, #selectedInfo, #actionPanel, #overlay, #minimap, #settingsButton, #settingsPanel, #buildPanel, #bossHud, #wavePreview, #eventLog"
+    "#hud, #help, #selectedInfo, #actionPanel, #overlay, #minimap, #settingsButton, #settingsPanel, #buildPanel, #bossHud, #wavePreview, #eventLog, #aiFeedback"
   );
 }
 
@@ -243,10 +250,14 @@ function animate() {
     updateHealthBars(camera);
     updateBaseSystem(camera);
     updateEffects(scene);
+    updateFloatingTexts(scene, camera);
+    updateTacticalSignals(scene);
+    updateCombo();
     cleanupEnemies(scene);
 
     updateHighlights();
     updateRangePreview();
+    updatePathVisuals();
 
     if (state.baseHp <= 0) {
       state.baseHp = 0;
@@ -259,6 +270,8 @@ function animate() {
     updateHighlights();
     updateRangePreview();
     updateBaseSystem(camera);
+    updatePathVisuals();
+    updateTacticalSignals(scene);
   }
 
   updateHud();
@@ -268,6 +281,7 @@ function animate() {
   updateAnnouncer();
   updateBossHud();
   updateWavePreview();
+  updateAIFeedback();
   updateUIActions();
   updateSettingsPanel();
   updateBuildPanel();

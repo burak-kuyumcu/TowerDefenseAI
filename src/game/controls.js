@@ -1,72 +1,114 @@
 import * as THREE from "three";
 import { state } from "./state.js";
-import { GRID_MIN, GRID_MAX, pathSet } from "../core/constants.js";
-import { updateTowerOccupiedKey } from "./towers.js";
+import { tryRelocateTower, canRelocateNow } from "./relocation.js";
+
+function isDown(keys, ...names) {
+  return names.some((name) => keys[name]);
+}
+
+function isRelocatingSelectedTower() {
+  return (
+    state.selectedObject &&
+    state.towers.includes(state.selectedObject) &&
+    canRelocateNow()
+  );
+}
 
 export function updateCamera(camera, keys) {
-  const speed = 0.18;
+  const moveSpeed = 0.12;
+  const rotateSpeed = 0.025;
 
-  if (keys["w"] || keys["W"]) camera.position.z -= speed;
-  if (keys["s"] || keys["S"]) camera.position.z += speed;
-  if (keys["a"] || keys["A"]) camera.position.x -= speed;
-  if (keys["d"] || keys["D"]) camera.position.x += speed;
-  if (keys["q"] || keys["Q"]) camera.position.y += speed;
-  if (keys["e"] || keys["E"]) camera.position.y -= speed;
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  forward.normalize();
 
-  camera.lookAt(0, 0, 0);
+  const right = new THREE.Vector3()
+    .crossVectors(forward, camera.up)
+    .normalize()
+    .multiplyScalar(-1);
+
+  if (isDown(keys, "w", "W", "KeyW")) {
+    camera.position.add(forward.clone().multiplyScalar(moveSpeed));
+  }
+
+  if (isDown(keys, "s", "S", "KeyS")) {
+    camera.position.add(forward.clone().multiplyScalar(-moveSpeed));
+  }
+
+  if (isDown(keys, "a", "A", "KeyA")) {
+    camera.position.add(right.clone().multiplyScalar(-moveSpeed));
+  }
+
+  if (isDown(keys, "d", "D", "KeyD")) {
+    camera.position.add(right.clone().multiplyScalar(moveSpeed));
+  }
+
+  if (isDown(keys, "r", "R", "KeyR")) {
+    camera.position.y += moveSpeed;
+  }
+
+  if (isDown(keys, "f", "F", "KeyF")) {
+    camera.position.y -= moveSpeed;
+  }
+
+  // Eğer kule seçiliyse ve preparation phase ise oklar kamerayı değil kuleyi taşır.
+  if (isRelocatingSelectedTower()) return;
+
+  if (isDown(keys, "ArrowLeft")) {
+    camera.rotation.y += rotateSpeed;
+  }
+
+  if (isDown(keys, "ArrowRight")) {
+    camera.rotation.y -= rotateSpeed;
+  }
+
+  if (isDown(keys, "ArrowUp")) {
+    camera.rotation.x += rotateSpeed;
+  }
+
+  if (isDown(keys, "ArrowDown")) {
+    camera.rotation.x -= rotateSpeed;
+  }
 }
 
 export function updateLights(spotLight, spotLightHelper, keys) {
-  const speed = 0.15;
+  const moveSpeed = 0.1;
 
-  if (!state.selectedObject) {
-    if (keys["ArrowUp"]) spotLight.position.z -= speed;
-    if (keys["ArrowDown"]) spotLight.position.z += speed;
-    if (keys["ArrowLeft"]) spotLight.position.x -= speed;
-    if (keys["ArrowRight"]) spotLight.position.x += speed;
-  }
-
-  if (keys["y"] || keys["Y"]) spotLight.position.y -= speed;
-
-  if (keys["+"] || keys["="]) spotLight.intensity += 0.05;
-  if (keys["-"]) spotLight.intensity = Math.max(0, spotLight.intensity - 0.05);
+  if (isDown(keys, "i", "I", "KeyI")) spotLight.position.z -= moveSpeed;
+  if (isDown(keys, "k", "K", "KeyK")) spotLight.position.z += moveSpeed;
+  if (isDown(keys, "j", "J", "KeyJ")) spotLight.position.x -= moveSpeed;
+  if (isDown(keys, "l", "L", "KeyL")) spotLight.position.x += moveSpeed;
+  if (isDown(keys, "y", "Y", "KeyY")) spotLight.position.y += moveSpeed;
+  if (isDown(keys, "u", "U", "KeyU")) spotLight.position.y -= moveSpeed;
 
   spotLightHelper.update();
 }
 
 export function moveSelectedObject(keys) {
-  if (!state.selectedObject) return;
-
   const selected = state.selectedObject;
-  const isTower = state.towers.includes(selected);
 
-  const oldX = selected.position.x;
-  const oldZ = selected.position.z;
+  if (!selected || !state.towers.includes(selected)) return;
+  if (!canRelocateNow()) return;
 
-  const speed = 0.08;
+  if (state.relocationMoveCooldown > 0) {
+    state.relocationMoveCooldown--;
+    return;
+  }
 
-  if (keys["ArrowUp"]) selected.position.z -= speed;
-  if (keys["ArrowDown"]) selected.position.z += speed;
-  if (keys["ArrowLeft"]) selected.position.x -= speed;
-  if (keys["ArrowRight"]) selected.position.x += speed;
+  let dx = 0;
+  let dz = 0;
 
-  selected.position.x = THREE.MathUtils.clamp(selected.position.x, GRID_MIN, GRID_MAX);
-  selected.position.z = THREE.MathUtils.clamp(selected.position.z, GRID_MIN, GRID_MAX);
+  if (isDown(keys, "ArrowLeft")) dx = -1;
+  if (isDown(keys, "ArrowRight")) dx = 1;
+  if (isDown(keys, "ArrowUp")) dz = -1;
+  if (isDown(keys, "ArrowDown")) dz = 1;
 
-  if (isTower) {
-    const newKey = `${Math.round(selected.position.x)},${Math.round(selected.position.z)}`;
-    const oldKey = selected.userData.occupiedKey;
+  if (dx === 0 && dz === 0) return;
 
-    const blockedByPath = pathSet.has(newKey);
-    const blockedByTower =
-      state.towerSet.has(newKey) && newKey !== oldKey;
+  const moved = tryRelocateTower(selected, dx, dz);
 
-    if (blockedByPath || blockedByTower) {
-      selected.position.x = oldX;
-      selected.position.z = oldZ;
-      return;
-    }
-
-    updateTowerOccupiedKey(selected);
+  if (moved) {
+    state.relocationMoveCooldown = 12;
   }
 }

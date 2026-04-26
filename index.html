@@ -20,6 +20,8 @@
       <div>Shader Mode: <span id="shaderMode">Standard</span></div>
       <div id="gameState">Running</div>
       <div>Audio: <span id="audioStatus">On</span></div>
+      <div>Combo: <span id="combo">-</span></div>
+      <div>Relocations: <span id="relocations">2</span></div>
     </div>
 
     <div id="help">
@@ -34,6 +36,7 @@
   <div>Enter: Start game</div>
   <div>G: Change selected tower target mode</div>
   <div>V / Enter: Start Next Wave</div>
+  <div>Arrow Keys: Rotate camera / Move selected tower during preparation</div>
   <br />
   <div>1: Normal Tower</div>
   <div>2: Rapid Tower</div>
@@ -138,6 +141,11 @@
 <div id="eventLog">
   <div class="event-log-title">Battle Log</div>
   <div id="eventLogContent"></div>
+</div>
+
+<div id="aiFeedback">
+  <div class="ai-feedback-title">AI Analysis</div>
+  <div id="aiFeedbackContent">Waiting for scan...</div>
 </div>
     <script type="module" src="/src/main.js"></script>
   </body>

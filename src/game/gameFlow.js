@@ -7,6 +7,7 @@ export function startGame() {
   state.paused = false;
   state.waitingForNextWave = true;
   state.waveActive = false;
+  state.relocationTokens = state.relocationMaxTokens;
 }
 
 export function togglePause() {
@@ -41,12 +42,17 @@ export function restartGame(scene) {
   state.waveActive = false;
   state.waitingForNextWave = true;
 
+  state.relocationTokens = state.relocationMaxTokens;
+
   state.score = 0;
   state.gold = 100;
   state.wave = 1;
   state.baseHp = 10;
   state.baseMaxHp = 10;
   state.gameOver = false;
+
+  state.combo = 0;
+  state.comboTimer = 0;
 
   state.spawned = 0;
   state.spawnTimer = 0;

@@ -15,12 +15,20 @@ export const state = {
   waveActive: false,
   waitingForNextWave: true,
 
+  relocationTokens: 2,
+  relocationMaxTokens: 2,
+  relocationMoveCooldown: 0,
+
   score: 0,
   gold: 100,
   wave: 1,
   baseHp: 10,
   baseMaxHp: 10,
   gameOver: false,
+
+  combo: 0,
+  comboTimer: 0,
+  comboMaxTimer: 180,
 
   spawned: 0,
   spawnTimer: 0,

@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { getUpgradeCost, getSellRefund } from "./upgrade.js";
+import { canRelocateNow } from "./relocation.js";
 
 export function updateSelectedInfo() {
   const content = document.querySelector("#selectedInfoContent");
@@ -17,6 +18,12 @@ export function updateSelectedInfo() {
     const upgradeCost = getUpgradeCost(selected);
     const refund = getSellRefund(selected);
     const targetMode = formatTargetMode(selected.userData.targetMode ?? "nearest");
+    const critChance = Math.round((selected.userData.critChance ?? 0) * 100);
+
+    const relocationText = canRelocateNow()
+      ? `Relocation: Available (${state.relocationTokens})<br>
+         Move: Arrow Keys`
+      : "Relocation: Only between waves";
 
     const upgradeInfo =
       level >= 3
@@ -34,10 +41,13 @@ export function updateSelectedInfo() {
       Level: ${level}<br>
       Target Mode: ${targetMode}<br>
       Damage: ${selected.userData.damage}<br>
+      Crit Chance: ${critChance}%<br>
       Range: ${selected.userData.range.toFixed(1)}<br>
       Fire Rate: ${selected.userData.fireRate}<br>
       Status: ${selected.userData.slowTimer > 0 ? "Slowed" : "Normal"}<br>
       Sell Refund: ${refund} Gold<br>
+      <hr>
+      ${relocationText}
       <hr>
       ${upgradeInfo}
     `;
@@ -80,5 +90,8 @@ function formatEnemyType(type) {
   if (type === "boss_purple") return "Purple Boss";
   if (type === "boss_crusher") return "Crusher Boss";
   if (type === "boss_runner") return "Runner Boss";
+  if (type === "boss_shield") return "Shield Boss";
+  if (type === "boss_splitter") return "Splitter Boss";
+  if (type === "boss_disruptor") return "Disruptor Boss";
   return "Normal Enemy";
 }

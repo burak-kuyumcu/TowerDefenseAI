@@ -51,11 +51,13 @@ export function spawnEnemy(scene) {
     slowMultiplier: 1,
 
     armor: 0,
+    shieldArmor: false,
 
     pulseCooldown: config.type === "boss_purple" ? 120 : 0,
     pulseInterval: config.type === "boss_purple" ? 180 : 0,
 
     speedBoostTimer: 0,
+    disruptTimer: 150,
     auraEffect: null
   };
 
@@ -115,8 +117,7 @@ export function updateEnemies(scene) {
       enemy.userData.index++;
     } else {
       const finalSpeed =
-        enemy.userData.speed *
-        (enemy.userData.speedMultiplier ?? 1);
+        enemy.userData.speed * (enemy.userData.speedMultiplier ?? 1);
 
       enemy.position.add(dir.normalize().multiplyScalar(finalSpeed));
     }
@@ -163,5 +164,8 @@ export function cleanupEnemies(scene) {
 function formatBossType(type) {
   if (type === "boss_crusher") return "Crusher Boss";
   if (type === "boss_runner") return "Runner Boss";
+  if (type === "boss_shield") return "Shield Boss";
+  if (type === "boss_splitter") return "Splitter Boss";
+  if (type === "boss_disruptor") return "Disruptor Boss";
   return "Purple Boss";
 }

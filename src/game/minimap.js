@@ -127,13 +127,19 @@ function drawEnemies(ctx, canvas) {
           ? "#7f1d1d"
           : enemy.userData.type === "boss_runner"
             ? "#fb923c"
-            : enemy.userData.type === "elite"
-              ? "#ec4899"
-              : enemy.userData.type === "tank"
-                ? "#7f1d1d"
-                : enemy.userData.type === "fast"
-                  ? "#f97316"
-                  : "#dc2626";
+            : enemy.userData.type === "boss_shield"
+              ? "#22c55e"
+              : enemy.userData.type === "boss_splitter"
+                ? "#eab308"
+                : enemy.userData.type === "boss_disruptor"
+                  ? "#06b6d4"
+                  : enemy.userData.type === "elite"
+                    ? "#ec4899"
+                    : enemy.userData.type === "tank"
+                      ? "#7f1d1d"
+                      : enemy.userData.type === "fast"
+                        ? "#f97316"
+                        : "#dc2626";
 
     ctx.beginPath();
     ctx.arc(
