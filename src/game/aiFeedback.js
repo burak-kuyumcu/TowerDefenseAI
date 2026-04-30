@@ -14,9 +14,17 @@ export function updateAIFeedback() {
 
   content.innerHTML = `
     ${getAIPlanText()}<br>
-    Counter: ${strategy}<br>
+    ${getBluffText()}<br>
+    Locked Strategy: ${strategy}<br>
+    Status: ${state.waveActive ? "Executing plan" : "Planning complete"}<br>
     Suggestion: ${getSuggestionText(strategy)}
   `;
+}
+
+function getBluffText() {
+  if (!state.aiBluffActive) return "Bluff: none";
+
+  return `Bluff: ${state.aiBluffFrom} → ${state.aiBluffTo}`;
 }
 
 function getSuggestionText(strategy) {

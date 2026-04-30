@@ -73,7 +73,10 @@ export function spawnEnemy(scene) {
   }
 
   if (config.type.startsWith("boss")) {
-    addEventLog(`${formatBossType(config.type)} spawned.`);
+    const bossName = formatBossType(config.type);
+
+    showAnnouncement(`⚠ BOSS DEPLOYED: ${bossName}`);
+    addEventLog(`${bossName} Boss spawned.`);
   }
 
   state.enemies.push(enemy);
@@ -162,10 +165,10 @@ export function cleanupEnemies(scene) {
 }
 
 function formatBossType(type) {
-  if (type === "boss_crusher") return "Crusher Boss";
-  if (type === "boss_runner") return "Runner Boss";
-  if (type === "boss_shield") return "Shield Boss";
-  if (type === "boss_splitter") return "Splitter Boss";
-  if (type === "boss_disruptor") return "Disruptor Boss";
-  return "Purple Boss";
+  if (type === "boss_crusher") return "Crusher";
+  if (type === "boss_runner") return "Runner";
+  if (type === "boss_shield") return "Shield";
+  if (type === "boss_splitter") return "Splitter";
+  if (type === "boss_disruptor") return "Disruptor";
+  return "Purple";
 }

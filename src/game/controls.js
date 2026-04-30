@@ -44,11 +44,11 @@ export function updateCamera(camera, keys) {
     camera.position.add(right.clone().multiplyScalar(moveSpeed));
   }
 
-  if (isDown(keys, "r", "R", "KeyR")) {
+  if (isDown(keys, "q", "Q", "KeyQ")) {
     camera.position.y += moveSpeed;
   }
 
-  if (isDown(keys, "f", "F", "KeyF")) {
+  if (isDown(keys, "e", "E", "KeyE")) {
     camera.position.y -= moveSpeed;
   }
 

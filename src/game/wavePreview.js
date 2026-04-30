@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { getAIStrategyName } from "./aiDirector.js";
+import { getAIStrategyName, getWaveEnemyCount } from "./aiDirector.js";
 
 export function updateWavePreview() {
   const content = document.querySelector("#wavePreviewContent");
@@ -12,12 +12,15 @@ export function updateWavePreview() {
 
   const isBossWave = state.wave % 5 === 0;
   const strategy = getAIStrategyName();
+  const expectedEnemies = isBossWave
+    ? "1 Boss"
+    : getWaveEnemyCount(state.enemiesPerWave);
 
   content.innerHTML = `
     Wave: ${state.wave}<br>
     Status: ${getWaveStatus()}<br>
     Type: ${isBossWave ? "Boss" : "Normal"}<br>
-    Enemies: ${isBossWave ? "1 Boss" : state.enemiesPerWave}<br>
+    Enemies: ${expectedEnemies}<br>
     AI: ${strategy}<br>
     Threat: ${getThreatText(strategy, isBossWave)}
   `;
@@ -33,14 +36,15 @@ function getWaveStatus() {
 }
 
 function getThreatText(strategy, isBossWave) {
-  if (isBossWave) return "Random boss variant";
+  if (isBossWave) return "Tactical boss variant";
 
-  if (strategy === "Swarm Pressure") return "More fast enemies";
-  if (strategy === "Heavy Push") return "More tank enemies";
-  if (strategy === "Armored Response") return "Heavy armor pressure";
+  if (strategy === "Swarm Pressure") return "More fast enemies, higher count";
+  if (strategy === "Heavy Push") return "Fewer but tougher enemies";
+  if (strategy === "Armored Response") return "More tank enemies";
   if (strategy === "Tank Response") return "Tank enemies likely";
   if (strategy === "Fast Pressure") return "Fast enemies likely";
-  if (strategy === "Late Wave Mix") return "Mixed enemy pressure";
+  if (strategy === "Adaptive Mix") return "Failed plan replaced";
+  if (strategy === "Late Wave Mix") return "Mixed pressure";
 
   return "Balanced enemies";
 }

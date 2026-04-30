@@ -7,6 +7,20 @@ export const state = {
 
   currentPath: PATHS[0],
 
+  aiLockedStrategy: "Balanced",
+  aiDisplayedStrategy: "Balanced",
+  aiLockedPlanText: "AI is waiting for analysis.",
+  aiBluffActive: false,
+  aiBluffFrom: null,
+  aiBluffTo: null,
+
+  aiMemory: {
+    lastStrategy: null,
+    successScore: 0,
+    previousBaseHp: 10,
+    lastDamageDealt: 0
+  },
+
   shaderMode: "standard",
   paused: false,
   muted: false,

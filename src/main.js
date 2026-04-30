@@ -39,6 +39,7 @@ import { updateWavePreview } from "./game/wavePreview.js";
 import { updateEventLog } from "./game/eventLog.js";
 import { updateAIFeedback } from "./game/aiFeedback.js";
 import { initPathVisuals, updatePathVisuals } from "./game/pathVisuals.js";
+import { updateTowerLabels } from "./game/towerLabels.js";
 
 import { initUIActions, updateUIActions } from "./game/uiActions.js";
 import { initSettingsPanel, updateSettingsPanel } from "./game/settingsPanel.js";
@@ -107,6 +108,10 @@ function isUIElement(target) {
   );
 }
 
+function toggleHelp() {
+  document.querySelector("#help")?.classList.toggle("hidden");
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     if (!state.started) {
@@ -138,6 +143,15 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
+  if (e.key === "h" || e.key === "H") {
+    if (e.shiftKey) {
+      spotLightHelper.visible = !spotLightHelper.visible;
+    } else {
+      toggleHelp();
+    }
+    return;
+  }
+
   if (!state.started || state.gameOver) return;
 
   if (e.key === "1") state.selectedTowerType = "normal";
@@ -148,21 +162,18 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key === "t" || e.key === "T") placeTower(scene);
   if (e.key === "u" || e.key === "U") upgradeSelectedTower();
-
   if (e.key === "g" || e.key === "G") cycleSelectedTowerTargetMode();
-
   if (e.key === "m" || e.key === "M") toggleShaderMode(scene);
 
-  if (e.key === "o" || e.key === "O") {
-    spotLight.visible = !spotLight.visible;
+  if (e.key === "o" || e.key === "O") spotLight.visible = !spotLight.visible;
+  if (e.key === "p" || e.key === "P") directionalLight.visible = !directionalLight.visible;
+
+  if (e.key === "+" || e.key === "=") {
+    spotLight.intensity = Math.min(8, spotLight.intensity + 0.25);
   }
 
-  if (e.key === "p" || e.key === "P") {
-    directionalLight.visible = !directionalLight.visible;
-  }
-
-  if (e.key === "h" || e.key === "H") {
-    spotLightHelper.visible = !spotLightHelper.visible;
+  if (e.key === "-" || e.key === "_") {
+    spotLight.intensity = Math.max(0, spotLight.intensity - 0.25);
   }
 
   if (e.key === "Escape") {
@@ -248,6 +259,7 @@ function animate() {
     updateTowers(scene);
     updateProjectiles(scene);
     updateHealthBars(camera);
+    updateTowerLabels(camera, state.towers);
     updateBaseSystem(camera);
     updateEffects(scene);
     updateFloatingTexts(scene, camera);
@@ -270,6 +282,7 @@ function animate() {
     updateHighlights();
     updateRangePreview();
     updateBaseSystem(camera);
+    updateTowerLabels(camera, state.towers);
     updatePathVisuals();
     updateTacticalSignals(scene);
   }
@@ -294,7 +307,6 @@ function animate() {
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 

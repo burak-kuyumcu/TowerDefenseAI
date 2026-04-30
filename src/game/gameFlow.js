@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { removeHealthBar } from "./healthBars.js";
 import { removeTowerLabel } from "./towerLabels.js";
+import { analyzeAndLockAIPlan } from "./aiDirector.js";
 
 export function startGame() {
   state.started = true;
@@ -8,6 +9,8 @@ export function startGame() {
   state.waitingForNextWave = true;
   state.waveActive = false;
   state.relocationTokens = state.relocationMaxTokens;
+
+  analyzeAndLockAIPlan();
 }
 
 export function togglePause() {
@@ -51,6 +54,18 @@ export function restartGame(scene) {
   state.baseMaxHp = 10;
   state.gameOver = false;
 
+  state.aiMemory.lastStrategy = null;
+  state.aiMemory.successScore = 0;
+  state.aiMemory.previousBaseHp = state.baseHp;
+  state.aiMemory.lastDamageDealt = 0;
+
+  state.aiLockedStrategy = "Balanced";
+  state.aiDisplayedStrategy = "Balanced";
+  state.aiLockedPlanText = "AI is waiting for analysis.";
+  state.aiBluffActive = false;
+  state.aiBluffFrom = null;
+  state.aiBluffTo = null;
+
   state.combo = 0;
   state.comboTimer = 0;
 
@@ -63,4 +78,6 @@ export function restartGame(scene) {
   state.projectiles.length = 0;
 
   state.towerSet.clear();
+
+  analyzeAndLockAIPlan();
 }

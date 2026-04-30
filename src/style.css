@@ -608,3 +608,6 @@ canvas#app {
     height: 130px;
   }
 }
+#help.hidden {
+  display: none;
+}

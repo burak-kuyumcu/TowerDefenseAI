@@ -28,10 +28,26 @@ export function updateBossHud() {
   );
 
   bossHpFill.style.width = `${hpRatio * 100}%`;
+  bossHpFill.style.background = getBossGradient(boss.userData.type);
 }
 
 function formatBossName(type) {
   if (type === "boss_crusher") return "BOSS: Crusher";
   if (type === "boss_runner") return "BOSS: Runner";
-  return "BOSS: Purple";
+  if (type === "boss_shield") return "BOSS: Shield";
+  if (type === "boss_splitter") return "BOSS: Splitter";
+  if (type === "boss_disruptor") return "BOSS: Disruptor";
+  if (type === "boss_purple") return "BOSS: Purple";
+
+  return "BOSS";
+}
+
+function getBossGradient(type) {
+  if (type === "boss_crusher") return "linear-gradient(90deg, #7f1d1d, #ef4444)";
+  if (type === "boss_runner") return "linear-gradient(90deg, #f97316, #facc15)";
+  if (type === "boss_shield") return "linear-gradient(90deg, #16a34a, #86efac)";
+  if (type === "boss_splitter") return "linear-gradient(90deg, #ca8a04, #fde047)";
+  if (type === "boss_disruptor") return "linear-gradient(90deg, #0891b2, #67e8f9)";
+
+  return "linear-gradient(90deg, #a855f7, #facc15)";
 }
