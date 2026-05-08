@@ -4,6 +4,8 @@ const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 let audioContext = null;
 
 function getAudioContext() {
+  if (!AudioContextClass) return null;
+
   if (!audioContext) {
     audioContext = new AudioContextClass();
   }
@@ -15,10 +17,16 @@ function getAudioContext() {
   return audioContext;
 }
 
-function playTone({ frequency = 440, duration = 0.08, type = "sine", volume = 0.08 }) {
+function playTone({
+  frequency = 440,
+  duration = 0.08,
+  type = "sine",
+  volume = 0.08
+}) {
   if (state.muted) return;
 
   const context = getAudioContext();
+  if (!context) return;
 
   const oscillator = context.createOscillator();
   const gain = context.createGain();
@@ -27,7 +35,10 @@ function playTone({ frequency = 440, duration = 0.08, type = "sine", volume = 0.
   oscillator.frequency.value = frequency;
 
   gain.gain.setValueAtTime(volume, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    context.currentTime + duration
+  );
 
   oscillator.connect(gain);
   gain.connect(context.destination);
@@ -65,4 +76,8 @@ export function playBaseHitSound() {
 
 export function toggleMute() {
   state.muted = !state.muted;
+
+  if (!state.muted) {
+    getAudioContext();
+  }
 }

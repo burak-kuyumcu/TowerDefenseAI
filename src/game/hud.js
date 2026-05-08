@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { getAIStrategyName, getWaveType } from "./aiDirector.js";
+import { getShaderModeLabel } from "./materials.js";
 
 export function updateHud() {
   document.querySelector("#score").textContent = state.score;
@@ -34,8 +35,7 @@ export function updateHud() {
 
   const shaderModeEl = document.querySelector("#shaderMode");
   if (shaderModeEl) {
-    shaderModeEl.textContent =
-      state.shaderMode === "toon" ? "Toon" : "Standard";
+    shaderModeEl.textContent = getShaderModeLabel();
   }
 
   const audioStatusEl = document.querySelector("#audioStatus");
@@ -61,4 +61,12 @@ function formatTowerType(type) {
   if (type === "splash") return "Splash";
 
   return "Normal";
+}
+
+function formatShaderMode(mode) {
+  if (mode === "toon") return "Toon";
+  if (mode === "neon") return "Neon";
+  if (mode === "xray") return "X-Ray";
+
+  return "Standard";
 }

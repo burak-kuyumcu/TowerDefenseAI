@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { toggleMute } from "./audio.js";
 import { togglePause, restartGame } from "./gameFlow.js";
-import { toggleShaderMode } from "./materials.js";
+import { toggleShaderMode, getShaderModeLabel } from "./materials.js";
 
 let initialized = false;
 
@@ -33,27 +33,41 @@ export function initSettingsPanel(scene) {
   soundButton?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
     toggleMute();
+    updateSettingsPanel();
+
+    console.log("Muted:", state.muted);
   });
 
   shaderButton?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
     toggleShaderMode(scene);
+    updateSettingsPanel();
+
+    console.log("Shader button clicked:", state.shaderMode);
   });
 
   pauseButton?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
     togglePause();
+    updateSettingsPanel();
   });
 
   restartButton?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+
     restartGame(scene);
     panel?.classList.add("hidden");
+    updateSettingsPanel();
   });
+
+  updateSettingsPanel();
 }
 
 export function updateSettingsPanel() {
@@ -66,10 +80,7 @@ export function updateSettingsPanel() {
   }
 
   if (shaderButton) {
-    shaderButton.textContent =
-      state.shaderMode === "toon"
-        ? "Shader: Toon"
-        : "Shader: Standard";
+    shaderButton.textContent = `Shader: ${getShaderModeLabel()}`;
   }
 
   if (pauseButton) {
