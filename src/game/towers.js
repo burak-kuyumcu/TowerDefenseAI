@@ -13,28 +13,28 @@ export function placeTower(scene) {
   const key = `${state.selectedTile.x},${state.selectedTile.z}`;
   const config = getTowerConfig(state.selectedTowerType);
 
-  const tower = new THREE.Mesh(
-    config.geometry,
-    createGameMaterial(config.color)
-  );
+  const tower = createTowerModel(state.selectedTowerType, config);
 
-  tower.position.set(
-    state.selectedTile.x,
-    config.height / 2,
-    state.selectedTile.z
-  );
+  const visualHead = tower.userData.head ?? null;
+  const visualCore = tower.userData.core ?? null;
+  const visualBarrel = tower.userData.barrel ?? null;
 
-  tower.castShadow = true;
-  tower.receiveShadow = true;
+  tower.position.set(state.selectedTile.x, 0, state.selectedTile.z);
 
   tower.userData = {
     type: state.selectedTowerType,
     level: 1,
     cooldown: 0,
+
+    head: visualHead,
+    core: visualCore,
+    barrel: visualBarrel,
+
     range: config.range,
     fireRate: config.fireRate,
     damage: config.damage,
     critChance: config.critChance,
+
     occupiedKey: key,
     selectable: true,
     baseColor: config.color,
@@ -61,6 +61,7 @@ export function placeTower(scene) {
 export function updateTowers(scene) {
   for (const tower of state.towers) {
     updateTowerSlowState(tower);
+    animateTowerIdle(tower);
 
     if (tower.userData.cooldown > 0) {
       tower.userData.cooldown--;
@@ -70,6 +71,7 @@ export function updateTowers(scene) {
     const target = findTargetEnemy(tower);
 
     if (target) {
+      aimTowerAtTarget(tower, target);
       shoot(scene, tower, target);
 
       const slowMultiplier = tower.userData.slowMultiplier ?? 1;
@@ -96,18 +98,32 @@ export function cycleSelectedTowerTargetMode() {
 }
 
 function updateTowerSlowState(tower) {
+  const meshes = [];
+
+  tower.traverse((child) => {
+    if (child.isMesh) meshes.push(child);
+  });
+
   if (tower.userData.slowTimer > 0) {
     tower.userData.slowTimer--;
     tower.userData.slowMultiplier = 1.8;
 
-    if (tower.material?.emissive) {
-      tower.material.emissive.set(0x581c87);
+    for (const mesh of meshes) {
+      if (mesh.material?.emissive) {
+        mesh.material.emissive.set(0x581c87);
+      }
     }
 
     return;
   }
 
   tower.userData.slowMultiplier = 1;
+
+  for (const mesh of meshes) {
+    if (mesh.material?.emissive) {
+      mesh.material.emissive.set(0x000000);
+    }
+  }
 }
 
 export function getClickedTower(raycaster, mouse, renderer, camera, clientX, clientY) {
@@ -118,8 +134,19 @@ export function getClickedTower(raycaster, mouse, renderer, camera, clientX, cli
 
   raycaster.setFromCamera(mouse, camera);
 
-  const hits = raycaster.intersectObjects(state.towers);
-  return hits.length > 0 ? hits[0].object : null;
+  const meshes = [];
+
+  for (const tower of state.towers) {
+    tower.traverse((child) => {
+      if (child.isMesh) {
+        child.userData.parentTower = tower;
+        meshes.push(child);
+      }
+    });
+  }
+
+  const hits = raycaster.intersectObjects(meshes);
+  return hits.length > 0 ? hits[0].object.userData.parentTower : null;
 }
 
 export function updateTowerOccupiedKey(tower) {
@@ -160,8 +187,10 @@ function findTargetEnemy(tower) {
         return b.userData.index - a.userData.index;
       }
 
-      return a.position.distanceTo(tower.position) -
-        b.position.distanceTo(tower.position);
+      return (
+        a.position.distanceTo(tower.position) -
+        b.position.distanceTo(tower.position)
+      );
     })[0];
   }
 
@@ -174,17 +203,210 @@ function findTargetEnemy(tower) {
   }
 
   return enemies.sort((a, b) => {
-    return a.position.distanceTo(tower.position) -
-      b.position.distanceTo(tower.position);
+    return (
+      a.position.distanceTo(tower.position) -
+      b.position.distanceTo(tower.position)
+    );
   })[0];
+}
+
+function aimTowerAtTarget(tower, target) {
+  const head = tower.userData.head;
+  if (!head) return;
+
+  const dx = target.position.x - tower.position.x;
+  const dz = target.position.z - tower.position.z;
+
+  head.rotation.y = Math.atan2(dx, dz);
+}
+
+function animateTowerIdle(tower) {
+  const core = tower.userData.core;
+
+  if (core) {
+    core.rotation.y += 0.04;
+    core.position.y = 1.12 + Math.sin(Date.now() * 0.004) * 0.08;
+  }
+
+  const barrel = tower.userData.barrel;
+
+  if (barrel && tower.userData.cooldown <= 2) {
+    const pulse = 1 + Math.sin(Date.now() * 0.04) * 0.08;
+    barrel.scale.y = pulse;
+  } else if (barrel) {
+    barrel.scale.y = 1;
+  }
+}
+
+function createTowerModel(type, config) {
+  if (type === "rapid") return createRapidTower(config);
+  if (type === "sniper") return createSniperTower(config);
+  if (type === "slow") return createSlowTower(config);
+  if (type === "splash") return createSplashTower(config);
+
+  return createNormalTower(config);
+}
+
+function createNormalTower(config) {
+  const group = new THREE.Group();
+
+  const base = mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.25, 18), 0x1e3a8a);
+  base.position.y = 0.13;
+
+  const body = mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.75, 18), config.color);
+  body.position.y = 0.62;
+
+  const head = new THREE.Group();
+  head.position.y = 1.05;
+
+  const turret = mesh(new THREE.BoxGeometry(0.62, 0.34, 0.5), 0x1d4ed8);
+
+  const barrel = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.85, 12), 0x111827);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = 0.58;
+
+  head.add(turret, barrel);
+  group.add(base, body, head);
+
+  group.userData.head = head;
+  group.userData.barrel = barrel;
+
+  return group;
+}
+
+function createRapidTower(config) {
+  const group = new THREE.Group();
+
+  const base = mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.22, 20), 0x0e7490);
+  base.position.y = 0.11;
+
+  const body = mesh(new THREE.CylinderGeometry(0.32, 0.42, 0.58, 20), config.color);
+  body.position.y = 0.5;
+
+  const head = new THREE.Group();
+  head.position.y = 0.86;
+
+  const turret = mesh(new THREE.BoxGeometry(0.6, 0.26, 0.42), 0x0284c7);
+
+  const barrelLeft = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.8, 10), 0x0f172a);
+  barrelLeft.rotation.x = Math.PI / 2;
+  barrelLeft.position.set(-0.15, 0.02, 0.56);
+
+  const barrelRight = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.8, 10), 0x0f172a);
+  barrelRight.rotation.x = Math.PI / 2;
+  barrelRight.position.set(0.15, 0.02, 0.56);
+
+  head.add(turret, barrelLeft, barrelRight);
+  group.add(base, body, head);
+
+  group.userData.head = head;
+  group.userData.barrel = barrelLeft;
+
+  return group;
+}
+
+function createSniperTower(config) {
+  const group = new THREE.Group();
+
+  const base = mesh(new THREE.CylinderGeometry(0.48, 0.58, 0.22, 5), 0x581c87);
+  base.position.y = 0.11;
+  base.rotation.y = Math.PI / 5;
+
+  const body = mesh(new THREE.ConeGeometry(0.42, 1.15, 5), config.color);
+  body.position.y = 0.78;
+
+  const head = new THREE.Group();
+  head.position.y = 1.35;
+
+  const scope = mesh(new THREE.BoxGeometry(0.35, 0.25, 0.35), 0x7e22ce);
+
+  const barrel = mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.45, 12), 0x020617);
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = 0.88;
+
+  const tip = mesh(new THREE.SphereGeometry(0.09, 12, 12), 0xc084fc);
+  tip.position.z = 1.62;
+
+  head.add(scope, barrel, tip);
+  group.add(base, body, head);
+
+  group.userData.head = head;
+  group.userData.barrel = barrel;
+
+  return group;
+}
+
+function createSlowTower(config) {
+  const group = new THREE.Group();
+
+  const base = mesh(new THREE.CylinderGeometry(0.5, 0.62, 0.24, 6), 0x0f766e);
+  base.position.y = 0.12;
+
+  const pillar = mesh(new THREE.CylinderGeometry(0.26, 0.34, 0.7, 12), config.color);
+  pillar.position.y = 0.55;
+
+  const core = mesh(new THREE.OctahedronGeometry(0.42), 0x5eead4, true);
+  core.position.y = 1.12;
+
+  const ring = mesh(new THREE.TorusGeometry(0.5, 0.045, 10, 32), 0x99f6e4, true);
+  ring.position.y = 1.12;
+  ring.rotation.x = Math.PI / 2;
+
+  group.add(base, pillar, core, ring);
+
+  group.userData.core = core;
+
+  return group;
+}
+
+function createSplashTower(config) {
+  const group = new THREE.Group();
+
+  const base = mesh(new THREE.CylinderGeometry(0.5, 0.62, 0.24, 18), 0x9a3412);
+  base.position.y = 0.12;
+
+  const body = mesh(new THREE.CylinderGeometry(0.38, 0.48, 0.62, 18), config.color);
+  body.position.y = 0.52;
+
+  const head = new THREE.Group();
+  head.position.y = 0.9;
+
+  const mortar = mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.75, 18), 0x431407);
+  mortar.rotation.x = Math.PI / 4;
+  mortar.position.z = 0.18;
+
+  const shell = mesh(new THREE.SphereGeometry(0.16, 14, 14), 0xfacc15);
+  shell.position.set(0, 0.2, -0.25);
+
+  head.add(mortar, shell);
+  group.add(base, body, head);
+
+  group.userData.head = head;
+  group.userData.barrel = mortar;
+
+  return group;
+}
+
+function mesh(geometry, color, emissive = false) {
+  const material = createGameMaterial(color);
+
+  if (material.emissive) {
+    material.emissive.set(emissive ? color : 0x000000);
+    material.emissiveIntensity = emissive ? 0.35 : 0;
+  }
+
+  const object = new THREE.Mesh(geometry, material);
+  object.castShadow = true;
+  object.receiveShadow = true;
+  object.userData.baseColor = color;
+
+  return object;
 }
 
 function getTowerConfig(type) {
   if (type === "rapid") {
     return {
-      geometry: new THREE.CylinderGeometry(0.35, 0.45, 0.9, 16),
       color: 0x38bdf8,
-      height: 0.9,
       range: 2.7,
       fireRate: 18,
       damage: 1,
@@ -196,9 +418,7 @@ function getTowerConfig(type) {
 
   if (type === "sniper") {
     return {
-      geometry: new THREE.ConeGeometry(0.45, 1.45, 5),
       color: 0xa855f7,
-      height: 1.45,
       range: 6.2,
       fireRate: 95,
       damage: 6,
@@ -210,9 +430,7 @@ function getTowerConfig(type) {
 
   if (type === "slow") {
     return {
-      geometry: new THREE.CylinderGeometry(0.45, 0.55, 1.05, 20),
       color: 0x14b8a6,
-      height: 1.05,
       range: 3.7,
       fireRate: 60,
       damage: 1,
@@ -228,9 +446,7 @@ function getTowerConfig(type) {
 
   if (type === "splash") {
     return {
-      geometry: new THREE.SphereGeometry(0.55, 18, 18),
       color: 0xf97316,
-      height: 1.1,
       range: 4.2,
       fireRate: 75,
       damage: 4,
@@ -245,9 +461,7 @@ function getTowerConfig(type) {
   }
 
   return {
-    geometry: new THREE.BoxGeometry(0.8, 1.2, 0.8),
     color: 0x2563eb,
-    height: 1.2,
     range: 3.2,
     fireRate: 45,
     damage: 2,
@@ -258,7 +472,7 @@ function getTowerConfig(type) {
 }
 
 function spawnPlaceEffect(scene, position) {
-  const mesh = new THREE.Mesh(
+  const ring = new THREE.Mesh(
     new THREE.RingGeometry(0.3, 0.6, 32),
     new THREE.MeshBasicMaterial({
       color: 0x22c55e,
@@ -268,23 +482,23 @@ function spawnPlaceEffect(scene, position) {
     })
   );
 
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.copy(position);
-  mesh.position.y = 0.05;
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.copy(position);
+  ring.position.y = 0.05;
 
-  scene.add(mesh);
+  scene.add(ring);
 
   let life = 20;
 
   const interval = setInterval(() => {
-    mesh.scale.multiplyScalar(1.1);
-    mesh.material.opacity *= 0.85;
+    ring.scale.multiplyScalar(1.1);
+    ring.material.opacity *= 0.85;
     life--;
 
     if (life <= 0) {
-      scene.remove(mesh);
-      mesh.geometry.dispose();
-      mesh.material.dispose();
+      scene.remove(ring);
+      ring.geometry.dispose();
+      ring.material.dispose();
       clearInterval(interval);
     }
   }, 16);

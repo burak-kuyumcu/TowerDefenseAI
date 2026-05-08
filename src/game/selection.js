@@ -20,7 +20,6 @@ export function updateSelectorFromMouse(
   raycaster.setFromCamera(mouse, camera);
 
   const hits = raycaster.intersectObject(pickingPlane);
-
   if (hits.length === 0) return;
 
   const point = hits[0].point;
@@ -64,11 +63,19 @@ export function handleSelectionClick(
 
   raycaster.setFromCamera(mouse, camera);
 
-  const selectableObjects = [...state.towers, ...state.enemies];
-  const hits = raycaster.intersectObjects(selectableObjects);
+  const towerMeshes = collectSelectableMeshes(state.towers, "parentTower");
+  const towerHits = raycaster.intersectObjects(towerMeshes);
 
-  if (hits.length > 0) {
-    state.selectedObject = hits[0].object;
+  if (towerHits.length > 0) {
+    state.selectedObject = towerHits[0].object.userData.parentTower;
+    return true;
+  }
+
+  const enemyMeshes = collectSelectableMeshes(state.enemies, "parentEnemy");
+  const enemyHits = raycaster.intersectObjects(enemyMeshes);
+
+  if (enemyHits.length > 0) {
+    state.selectedObject = enemyHits[0].object.userData.parentEnemy;
     return true;
   }
 
@@ -76,28 +83,70 @@ export function handleSelectionClick(
   return false;
 }
 
+function collectSelectableMeshes(objects, parentKey) {
+  const meshes = [];
+
+  for (const object of objects) {
+    if (object.isMesh) {
+      object.userData[parentKey] = object;
+      meshes.push(object);
+      continue;
+    }
+
+    object.traverse((child) => {
+      if (child.isMesh) {
+        child.userData[parentKey] = object;
+        meshes.push(child);
+      }
+    });
+  }
+
+  return meshes;
+}
+
 export function updateHighlights() {
   for (const tower of state.towers) {
-    if (!tower.material?.emissive) continue;
+    tower.traverse((child) => {
+      if (!child.isMesh || !child.material?.emissive) return;
 
-    if (tower === state.selectedObject) {
-      tower.material.emissive.set(0xffff00);
-    } else if (tower.userData.slowTimer > 0) {
-      tower.material.emissive.set(0x581c87);
-    } else {
-      tower.material.emissive.set(0x000000);
-    }
+      if (tower === state.selectedObject) {
+        child.material.emissive.set(0xffff00);
+      } else if (tower.userData.slowTimer > 0) {
+        child.material.emissive.set(0x581c87);
+      } else {
+        child.material.emissive.set(0x000000);
+      }
+    });
   }
 
   for (const enemy of state.enemies) {
-    if (!enemy.material?.emissive) continue;
-
-    if (enemy === state.selectedObject) {
-      enemy.material.emissive.set(0xffff00);
-    } else if (enemy.userData.slowTimer > 0) {
-      enemy.material.emissive.set(0x14b8a6);
-    } else {
-      enemy.material.emissive.set(0x000000);
+    if (enemy.isMesh) {
+      updateSingleEnemyHighlight(enemy, enemy);
+      continue;
     }
+
+    enemy.traverse((child) => {
+      if (!child.isMesh || !child.material?.emissive) return;
+
+      if (enemy === state.selectedObject) {
+        child.material.emissive.set(0xffff00);
+      } else if (enemy.userData.slowTimer > 0) {
+        child.material.emissive.set(0x14b8a6);
+      } else {
+        child.material.emissive.set(0x000000);
+      }
+    });
+  }
+}
+
+function updateSingleEnemyHighlight(enemy, root) {
+  if (!enemy.material?.emissive) return;
+
+  if (root === state.selectedObject) {
+    enemy.material.emissive.set(0xffff00);
+  } else if (root.userData.slowTimer > 0) {
+    enemy.material.emissive.set(0x14b8a6);
+  } else {
+    enemy.material.emissive.set(0x000000);
   }
 }
