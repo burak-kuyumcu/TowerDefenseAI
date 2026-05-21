@@ -26,12 +26,34 @@ export function updatePathVisuals() {
     const isActive = activePathSet.has(tile.userData.pathKey);
 
     if (shouldHighlight && isActive) {
-      tile.material.color.set(0xf59e0b);
-      tile.material.emissive.set(0x7c2d12);
+      setMaterialColor(tile.material, 0xf59e0b);
+      setMaterialEmissive(tile.material, 0x7c2d12);
     } else {
-      tile.material.color.set(tile.userData.baseColor ?? 0x8b5a2b);
-      tile.material.emissive.set(0x000000);
+      setMaterialColor(tile.material, tile.userData.baseColor ?? 0x8b5a2b);
+      setMaterialEmissive(tile.material, 0x000000);
     }
+  }
+}
+
+function setMaterialColor(material, color) {
+  if (material?.color?.set) {
+    material.color.set(color);
+    return;
+  }
+
+  if (material?.uniforms?.uColor?.value?.set) {
+    material.uniforms.uColor.value.set(color);
+  }
+}
+
+function setMaterialEmissive(material, color) {
+  if (material?.emissive?.set) {
+    material.emissive.set(color);
+    return;
+  }
+
+  if (material?.uniforms?.uEmissive?.value?.set) {
+    material.uniforms.uEmissive.value.set(color);
   }
 }
 

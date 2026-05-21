@@ -388,17 +388,22 @@ function createSplashTower(config) {
 }
 
 function mesh(geometry, color, emissive = false) {
-  const material = createGameMaterial(color);
+  const material = createGameMaterial(color, "tower");
 
-  if (material.emissive) {
+  if (material.emissive?.set) {
     material.emissive.set(emissive ? color : 0x000000);
+  }
+
+  if (typeof material.emissiveIntensity === "number") {
     material.emissiveIntensity = emissive ? 0.35 : 0;
   }
 
   const object = new THREE.Mesh(geometry, material);
   object.castShadow = true;
   object.receiveShadow = true;
+
   object.userData.baseColor = color;
+  object.userData.shaderRole = "tower";
 
   return object;
 }

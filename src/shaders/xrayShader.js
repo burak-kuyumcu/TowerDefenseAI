@@ -1,35 +1,33 @@
 export const xrayVertexShader = `
-  varying vec3 vNormal;
-  varying vec3 vViewPosition;
+  varying float vRim;
 
   void main() {
-    vNormal = normalize(normalMatrix * normal);
-
+    vec3 n = normalize(normalMatrix * normal);
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vViewPosition = -mvPosition.xyz;
+    vec3 viewDir = normalize(-mvPosition.xyz);
+
+    vRim = 1.0 - max(dot(n, viewDir), 0.0);
 
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
 export const xrayFragmentShader = `
+  precision mediump float;
+
   uniform vec3 uColor;
   uniform vec3 uEmissive;
   uniform float uEmissiveIntensity;
 
-  varying vec3 vNormal;
-  varying vec3 vViewPosition;
+  varying float vRim;
 
   void main() {
-    vec3 n = normalize(vNormal);
-    vec3 v = normalize(vViewPosition);
+    float rim = pow(vRim, 1.05);
 
-    float rim = 1.0 - max(dot(n, v), 0.0);
-    rim = pow(rim, 1.4);
+    vec3 xray = vec3(0.2, 0.95, 1.0);
+    vec3 color = xray * (0.18 + rim * 1.65);
+    color += uEmissive * uEmissiveIntensity;
 
-    vec3 finalColor = mix(uColor * 0.2, uColor, rim);
-    finalColor += uEmissive * uEmissiveIntensity;
-
-    gl_FragColor = vec4(finalColor, 0.72);
+    gl_FragColor = vec4(color, 0.68);
   }
 `;

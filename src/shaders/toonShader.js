@@ -1,35 +1,38 @@
 export const toonVertexShader = `
-  varying vec3 vNormal;
+  varying float vShade;
 
   void main() {
-    vNormal = normalize(normalMatrix * normal);
+    vec3 n = normalize(normalMatrix * normal);
+    vec3 lightDir = normalize(vec3(0.4, 1.0, 0.6));
+    vShade = max(dot(n, lightDir), 0.0);
+
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
 export const toonFragmentShader = `
+  precision mediump float;
+
   uniform vec3 uColor;
   uniform vec3 uEmissive;
   uniform float uEmissiveIntensity;
-  uniform vec3 uLightDirection;
 
-  varying vec3 vNormal;
+  varying float vShade;
 
   void main() {
-    vec3 n = normalize(vNormal);
-    vec3 l = normalize(uLightDirection);
+    float s = 0.22;
 
-    float d = max(dot(n, l), 0.0);
+    if (vShade > 0.78) {
+      s = 1.15;
+    } else if (vShade > 0.48) {
+      s = 0.72;
+    } else if (vShade > 0.22) {
+      s = 0.42;
+    }
 
-    float shade;
-    if (d > 0.75) shade = 1.0;
-    else if (d > 0.45) shade = 0.72;
-    else if (d > 0.22) shade = 0.48;
-    else shade = 0.28;
+    vec3 color = uColor * s;
+    color += uEmissive * uEmissiveIntensity;
 
-    vec3 finalColor = uColor * shade;
-    finalColor += uEmissive * uEmissiveIntensity;
-
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_FragColor = vec4(color, 1.0);
   }
 `;

@@ -36,7 +36,7 @@ export function initBaseSystem(scene, base) {
 
   baseBar.position.set(
     base.position.x,
-    base.position.y + 1.25,
+    base.position.y + 2.65,
     base.position.z
   );
 
@@ -50,9 +50,7 @@ export function damageBase(amount) {
   addEventLog(`Base took ${amount} damage.`);
   playBaseHitSound();
 
-  if (baseObject?.material?.emissive) {
-    baseObject.material.emissive.set(0xff0000);
-  }
+  setBaseEmissive(0xff0000);
 
   if (state.baseHp <= 0) {
     state.baseHp = 0;
@@ -66,7 +64,7 @@ export function updateBaseSystem(camera) {
 
   baseBar.position.set(
     baseObject.position.x,
-    baseObject.position.y + 1.25,
+    baseObject.position.y + 2.65,
     baseObject.position.z
   );
 
@@ -80,8 +78,22 @@ export function updateBaseSystem(camera) {
   if (flashTimer > 0) {
     flashTimer--;
 
-    if (flashTimer <= 0 && baseObject.material?.emissive) {
-      baseObject.material.emissive.set(0x000000);
+    if (flashTimer <= 0) {
+      setBaseEmissive(0x000000);
     }
   }
+}
+
+function setBaseEmissive(color) {
+  if (!baseObject) return;
+
+  baseObject.traverse((child) => {
+    if (!child.isMesh) return;
+
+    if (child.material?.emissive?.set) {
+      child.material.emissive.set(color);
+    } else if (child.material?.uniforms?.uEmissive?.value?.set) {
+      child.material.uniforms.uEmissive.value.set(color);
+    }
+  });
 }

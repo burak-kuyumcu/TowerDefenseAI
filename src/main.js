@@ -27,6 +27,10 @@ import { updateHealthBars } from "./game/healthBars.js";
 import { updateEffects } from "./game/effects.js";
 import { updateFloatingTexts } from "./game/floatingText.js";
 import { updateTacticalSignals } from "./game/tacticalSignals.js";
+import {
+  initTacticalOverlay,
+  updateTacticalOverlay
+} from "./game/tacticalOverlay.js";
 import { updateCombo } from "./game/combo.js";
 
 import { updateHud } from "./game/hud.js";
@@ -50,6 +54,7 @@ import { startGame, togglePause, restartGame } from "./game/gameFlow.js";
 import { initBaseSystem, updateBaseSystem } from "./game/base.js";
 import { toggleMute } from "./game/audio.js";
 import { updateBossAbilities } from "./game/bossAbilities.js";
+import { createPostProcessing } from "./game/postProcessing.js";
 
 import {
   createRangePreview,
@@ -82,6 +87,8 @@ const {
   base
 } = createSceneSetup(canvas);
 
+const postProcessing = createPostProcessing(renderer);
+
 initKeyboard();
 createRangePreview(scene);
 initBaseSystem(scene, base);
@@ -90,6 +97,7 @@ initSettingsPanel(scene);
 initBuildPanel();
 initWaveControls(scene);
 initPathVisuals(scene);
+initTacticalOverlay(scene);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -163,7 +171,11 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "t" || e.key === "T") placeTower(scene);
   if (e.key === "u" || e.key === "U") upgradeSelectedTower();
   if (e.key === "g" || e.key === "G") cycleSelectedTowerTargetMode();
-  if (e.key === "m" || e.key === "M") toggleShaderMode(scene);
+
+  if (e.key === "m" || e.key === "M") {
+    toggleShaderMode(scene);
+    return;
+  }
 
   if (e.key === "o" || e.key === "O") spotLight.visible = !spotLight.visible;
   if (e.key === "p" || e.key === "P") directionalLight.visible = !directionalLight.visible;
@@ -264,6 +276,7 @@ function animate() {
     updateEffects(scene);
     updateFloatingTexts(scene, camera);
     updateTacticalSignals(scene);
+    updateTacticalOverlay(scene);
     updateCombo();
     cleanupEnemies(scene);
 
@@ -285,6 +298,7 @@ function animate() {
     updateTowerLabels(camera, state.towers);
     updatePathVisuals();
     updateTacticalSignals(scene);
+    updateTacticalOverlay(scene);
   }
 
   updateHud();
@@ -301,13 +315,15 @@ function animate() {
   updateWaveControls();
   updateEventLog();
 
-  renderer.render(scene, camera);
+  postProcessing.render(scene, camera, state.shaderMode);
 }
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+
   renderer.setSize(window.innerWidth, window.innerHeight);
+  postProcessing.resize(window.innerWidth, window.innerHeight);
 });
 
 animate();

@@ -290,18 +290,23 @@ function createDisruptorBoss(config) {
   return group;
 }
 
-function mesh(geometry, color, emissive = false) {
-  const material = createGameMaterial(color);
+function mesh(geometry, color, emissive = false, role = "enemy") {
+  const material = createGameMaterial(color, role);
 
-  if (material.emissive) {
+  if (material.emissive?.set) {
     material.emissive.set(emissive ? color : 0x000000);
+  }
+
+  if (typeof material.emissiveIntensity === "number") {
     material.emissiveIntensity = emissive ? 0.4 : 0;
   }
 
   const object = new THREE.Mesh(geometry, material);
   object.castShadow = true;
   object.receiveShadow = true;
+
   object.userData.baseColor = color;
+  object.userData.shaderRole = role;
 
   return object;
 }

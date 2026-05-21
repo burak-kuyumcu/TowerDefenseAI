@@ -3,8 +3,10 @@ import {
   pathTiles,
   MAP_SIZE,
   BASE_POSITION,
-  PORTAL_POSITION
+  PORTAL_POSITION,
+  pathSet
 } from "./constants.js";
+import { createGameMaterial } from "../game/materials.js";
 
 export function createSceneSetup(canvas) {
   const scene = new THREE.Scene();
@@ -20,15 +22,11 @@ export function createSceneSetup(canvas) {
   camera.position.set(0, 15, 13);
   camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true
-  });
-
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.45);
   directionalLight.position.set(5, 14, 7);
@@ -56,9 +54,13 @@ export function createSceneSetup(canvas) {
   spotLightHelper.visible = false;
   scene.add(spotLightHelper);
 
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE),
-    new THREE.MeshStandardMaterial({ color: 0x256b2f })
+  const ground = applyShaderData(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE),
+      createGameMaterial(0x256b2f, "ground")
+    ),
+    0x256b2f,
+    "ground"
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -68,9 +70,11 @@ export function createSceneSetup(canvas) {
   grid.position.y = 0.025;
   scene.add(grid);
 
+  createMapZones(scene);
   createPathTiles(scene);
   addMapDecorations(scene);
   createPortal(scene);
+
   const base = createBaseFort(scene);
 
   const selector = new THREE.Mesh(
@@ -96,201 +100,199 @@ export function createSceneSetup(canvas) {
   };
 }
 
-function createPathTiles(scene) {
-  const pathMaterial = new THREE.MeshStandardMaterial({
-    color: 0x7c4f25,
-    emissive: 0x000000
-  });
+function createMapZones(scene) {
+  createZone(scene, -6, 6, 2.4, 1.6, 0x7f1d1d, 0.18);
+  createZone(scene, 6, -5, 2.6, 1.8, 0x0ea5e9, 0.16);
+  createZone(scene, -3, -6, 3.2, 1.4, 0x14532d, 0.16);
+  createZone(scene, 5, 5, 2.6, 1.5, 0x475569, 0.14);
+}
 
+function createZone(scene, x, z, width, depth, color, opacity) {
+  const zone = applyShaderData(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(width, depth),
+      createGameMaterial(color, "decor")
+    ),
+    color,
+    "decor"
+  );
+
+  zone.rotation.x = -Math.PI / 2;
+  zone.position.set(x, 0.035, z);
+  zone.material.transparent = true;
+  zone.material.opacity = opacity;
+  zone.material.depthWrite = false;
+
+  scene.add(zone);
+}
+
+function createPathTiles(scene) {
   pathTiles.forEach((p) => {
-    const tile = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 0.1, 1),
-      pathMaterial.clone()
+    const tile = applyShaderData(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(1, 0.1, 1),
+        createGameMaterial(0x7c4f25, "path")
+      ),
+      0x7c4f25,
+      "path"
     );
 
     tile.position.set(p.x, 0.05, p.z);
     tile.receiveShadow = true;
-
-    tile.userData = {
-      isPathTile: true,
-      pathKey: `${p.x},${p.z}`,
-      baseColor: 0x7c4f25
-    };
+    tile.userData.isPathTile = true;
+    tile.userData.pathKey = `${p.x},${p.z}`;
 
     scene.add(tile);
   });
 }
 
 function createPortal(scene) {
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.95, 1.15, 0.35, 32),
-    new THREE.MeshStandardMaterial({
-      color: 0x7c2d12,
-      roughness: 0.7
-    })
+  const group = new THREE.Group();
+  group.position.set(PORTAL_POSITION.x, 0, PORTAL_POSITION.z);
+
+  const base = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.75, 0.95, 0.28, 32),
+      createGameMaterial(0x7c2d12, "portal")
+    ),
+    0x7c2d12,
+    "portal"
   );
-  base.position.set(PORTAL_POSITION.x, 0.18, PORTAL_POSITION.z);
+  base.position.y = 0.14;
   base.castShadow = true;
   base.receiveShadow = true;
-  scene.add(base);
 
-  const outerRing = new THREE.Mesh(
-    new THREE.TorusGeometry(0.82, 0.15, 18, 48),
-    new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      emissive: 0x7f1d1d,
-      emissiveIntensity: 0.45
-    })
+  const outerRing = applyShaderData(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(0.62, 0.12, 18, 48),
+      createGameMaterial(0xef4444, "portal")
+    ),
+    0xef4444,
+    "portal"
   );
-  outerRing.position.copy(PORTAL_POSITION);
-  outerRing.position.y = 0.92;
+  outerRing.position.y = 0.86;
   outerRing.rotation.x = Math.PI / 2;
   outerRing.castShadow = true;
-  scene.add(outerRing);
 
-  const innerRing = new THREE.Mesh(
-    new THREE.TorusGeometry(0.55, 0.07, 12, 36),
-    new THREE.MeshStandardMaterial({
-      color: 0xf97316,
-      emissive: 0xf97316,
-      emissiveIntensity: 0.7
-    })
+  const innerCore = applyShaderData(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(0.28, 24, 24),
+      createGameMaterial(0xfacc15, "portal")
+    ),
+    0xfacc15,
+    "portal"
   );
-  innerRing.position.copy(outerRing.position);
-  innerRing.rotation.x = Math.PI / 2;
-  scene.add(innerRing);
+  innerCore.position.y = 0.86;
 
-  const core = new THREE.Mesh(
-    new THREE.SphereGeometry(0.34, 24, 24),
-    new THREE.MeshStandardMaterial({
-      color: 0xfacc15,
-      emissive: 0xf97316,
-      emissiveIntensity: 0.75
-    })
+  const groundRing = applyShaderData(
+    new THREE.Mesh(
+      new THREE.RingGeometry(0.72, 0.92, 64),
+      createGameMaterial(0xf97316, "portal")
+    ),
+    0xf97316,
+    "portal"
   );
-  core.position.set(PORTAL_POSITION.x, 0.92, PORTAL_POSITION.z);
-  scene.add(core);
+  groundRing.rotation.x = -Math.PI / 2;
+  groundRing.position.y = 0.07;
 
-  const warningRing = new THREE.Mesh(
-    new THREE.RingGeometry(0.95, 1.25, 64),
-    new THREE.MeshBasicMaterial({
-      color: 0xf97316,
-      transparent: true,
-      opacity: 0.35,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    })
-  );
-  warningRing.rotation.x = -Math.PI / 2;
-  warningRing.position.set(PORTAL_POSITION.x, 0.08, PORTAL_POSITION.z);
-  scene.add(warningRing);
+  group.add(base, outerRing, innerCore, groundRing);
+  scene.add(group);
 
-  const light = new THREE.PointLight(0xff6b00, 1.6, 6);
-  light.position.set(PORTAL_POSITION.x, 1.2, PORTAL_POSITION.z);
+  const light = new THREE.PointLight(0xff6b00, 1.4, 5);
+  light.position.set(PORTAL_POSITION.x, 1.1, PORTAL_POSITION.z);
   scene.add(light);
-
-  addSmallPillarsAround(scene, PORTAL_POSITION.x, PORTAL_POSITION.z, 0xef4444);
 }
 
 function createBaseFort(scene) {
   const group = new THREE.Group();
-  group.position.copy(BASE_POSITION);
+  group.position.set(BASE_POSITION.x, 0, BASE_POSITION.z);
 
-  const foundation = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.18, 1.35, 0.35, 32),
-    new THREE.MeshStandardMaterial({ color: 0x1e3a8a })
+  const foundation = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.95, 1.15, 0.32, 32),
+      createGameMaterial(0x1e3a8a, "base")
+    ),
+    0x1e3a8a,
+    "base"
   );
-  foundation.position.y = -0.38;
+  foundation.position.y = 0.16;
   foundation.castShadow = true;
   foundation.receiveShadow = true;
 
-  const tower = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.78, 1.02, 1.65, 32),
-    new THREE.MeshStandardMaterial({
-      color: 0x1d4ed8,
-      emissive: 0x000000
-    })
+  const tower = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.65, 0.85, 1.25, 32),
+      createGameMaterial(0x1d4ed8, "base")
+    ),
+    0x1d4ed8,
+    "base"
   );
-  tower.position.y = 0.25;
+  tower.position.y = 0.93;
   tower.castShadow = true;
   tower.receiveShadow = true;
 
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(1.0, 0.7, 32),
-    new THREE.MeshStandardMaterial({ color: 0x0f172a })
+  const roof = applyShaderData(
+    new THREE.Mesh(
+      new THREE.ConeGeometry(0.8, 0.55, 32),
+      createGameMaterial(0x0f172a, "base")
+    ),
+    0x0f172a,
+    "base"
   );
-  roof.position.y = 1.42;
+  roof.position.y = 1.82;
   roof.castShadow = true;
 
-  const beacon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.23, 20, 20),
-    new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x38bdf8,
-      emissiveIntensity: 0.75
-    })
+  const beacon = applyShaderData(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 20, 20),
+      createGameMaterial(0x38bdf8, "base")
+    ),
+    0x38bdf8,
+    "base"
   );
-  beacon.position.y = 1.93;
+  beacon.position.y = 2.18;
 
-  const flagPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.035, 1.25, 8),
-    new THREE.MeshStandardMaterial({ color: 0xe5e7eb })
+  const flagPole = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8),
+      createGameMaterial(0xe5e7eb, "base")
+    ),
+    0xe5e7eb,
+    "base"
   );
-  flagPole.position.set(0, 2.25, 0);
+  flagPole.position.set(0.2, 2.55, 0);
 
-  const flag = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.34, 0.045),
-    new THREE.MeshStandardMaterial({ color: 0x22c55e })
+  const flag = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.24, 0.04),
+      createGameMaterial(0x22c55e, "base")
+    ),
+    0x22c55e,
+    "base"
   );
-  flag.position.set(0.4, 2.48, 0);
+  flag.position.set(0.48, 2.75, 0);
 
-  const shieldRing = new THREE.Mesh(
-    new THREE.RingGeometry(1.25, 1.55, 72),
-    new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.28,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    })
+  const shieldRing = applyShaderData(
+    new THREE.Mesh(
+      new THREE.RingGeometry(1.0, 1.22, 72),
+      createGameMaterial(0x38bdf8, "base")
+    ),
+    0x38bdf8,
+    "base"
   );
   shieldRing.rotation.x = -Math.PI / 2;
-  shieldRing.position.y = -0.52;
+  shieldRing.position.y = 0.08;
 
   group.add(foundation, tower, roof, beacon, flagPole, flag, shieldRing);
   scene.add(group);
 
-  const light = new THREE.PointLight(0x38bdf8, 1.25, 5);
+  const light = new THREE.PointLight(0x38bdf8, 1.2, 5);
   light.position.set(BASE_POSITION.x, 2.2, BASE_POSITION.z);
   scene.add(light);
 
-  addSmallPillarsAround(scene, BASE_POSITION.x, BASE_POSITION.z, 0x38bdf8);
+  group.userData.coreMesh = tower;
 
   return group;
-}
-
-function addSmallPillarsAround(scene, x, z, color) {
-  const positions = [
-    [1.35, 1.35],
-    [-1.35, 1.35],
-    [1.35, -1.35],
-    [-1.35, -1.35]
-  ];
-
-  for (const [dx, dz] of positions) {
-    const pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.11, 0.15, 0.55, 10),
-      new THREE.MeshStandardMaterial({
-        color,
-        emissive: color,
-        emissiveIntensity: 0.22
-      })
-    );
-
-    pillar.position.set(x + dx, 0.28, z + dz);
-    pillar.castShadow = true;
-    scene.add(pillar);
-  }
 }
 
 function addMapDecorations(scene) {
@@ -302,17 +304,16 @@ function addMapDecorations(scene) {
     [0, -5],
     [2, 6],
     [4, -6],
-    [6, 1],
     [7, -3],
     [7, 7],
     [-7, -6],
-    [-6, -2],
-    [5, 6],
-    [6, -7]
+    [6, -7],
+    [-6, 1],
+    [5, 2]
   ];
 
   for (const [x, z] of treePositions) {
-    createTree(scene, x, z);
+    if (isDecorationSafe(x, z)) createTree(scene, x, z);
   }
 
   const rockPositions = [
@@ -321,46 +322,72 @@ function addMapDecorations(scene) {
     [-3, 5],
     [-1, -6],
     [2, -5],
-    [4, 3],
     [5, -7],
     [7, 0],
-    [-5, -7],
-    [3, 7]
+    [3, 7],
+    [-5, 2],
+    [6, 3],
+    [-4, -2],
+    [1, 4]
   ];
 
   for (const [x, z] of rockPositions) {
-    createRock(scene, x, z);
+    if (isDecorationSafe(x, z)) createRock(scene, x, z);
   }
 
   const cratePositions = [
     [-6.5, -7.2],
     [-5.7, -7.2],
     [6.8, 6.5],
-    [-7.2, 6.3],
-    [7.2, -6.3]
+    [7.2, -6.3],
+    [-7.1, 6.4]
   ];
 
   for (const [x, z] of cratePositions) {
-    createCrate(scene, x, z);
+    if (isDecorationSafe(Math.round(x), Math.round(z))) {
+      createCrate(scene, x, z);
+    }
   }
 
-  createEnergyPad(scene, -5.5, 6.9, 0xef4444);
-  createEnergyPad(scene, 6.3, 5.7, 0x38bdf8);
+  createEnergyPad(scene, 6.2, 4.8, 0x38bdf8);
+}
+
+function isDecorationSafe(x, z) {
+  const key = `${Math.round(x)},${Math.round(z)}`;
+
+  if (pathSet.has(key)) return false;
+
+  const protectedKeys = new Set([
+    `${PORTAL_POSITION.x},${PORTAL_POSITION.z}`,
+    `${BASE_POSITION.x},${BASE_POSITION.z}`
+  ]);
+
+  if (protectedKeys.has(key)) return false;
+
+  return true;
 }
 
 function createTree(scene, x, z) {
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.09, 0.12, 0.5, 8),
-    new THREE.MeshStandardMaterial({ color: 0x7c2d12 })
+  const trunk = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.12, 0.5, 8),
+      createGameMaterial(0x7c2d12, "decor")
+    ),
+    0x7c2d12,
+    "decor"
   );
   trunk.position.set(x, 0.25, z);
   trunk.castShadow = true;
   trunk.receiveShadow = true;
   scene.add(trunk);
 
-  const leaves = new THREE.Mesh(
-    new THREE.ConeGeometry(0.45, 0.95, 12),
-    new THREE.MeshStandardMaterial({ color: 0x14532d })
+  const leaves = applyShaderData(
+    new THREE.Mesh(
+      new THREE.ConeGeometry(0.45, 0.95, 12),
+      createGameMaterial(0x14532d, "decor")
+    ),
+    0x14532d,
+    "decor"
   );
   leaves.position.set(x, 0.95, z);
   leaves.castShadow = true;
@@ -369,10 +396,15 @@ function createTree(scene, x, z) {
 }
 
 function createRock(scene, x, z) {
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.33),
-    new THREE.MeshStandardMaterial({ color: 0x6b7280 })
+  const rock = applyShaderData(
+    new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.33),
+      createGameMaterial(0x6b7280, "decor")
+    ),
+    0x6b7280,
+    "decor"
   );
+
   rock.position.set(x, 0.27, z);
   rock.scale.y = 0.72;
   rock.rotation.y = Math.random() * Math.PI;
@@ -382,10 +414,15 @@ function createRock(scene, x, z) {
 }
 
 function createCrate(scene, x, z) {
-  const crate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, 0.45, 0.45),
-    new THREE.MeshStandardMaterial({ color: 0x92400e })
+  const crate = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.45, 0.45),
+      createGameMaterial(0x92400e, "decor")
+    ),
+    0x92400e,
+    "decor"
   );
+
   crate.position.set(x, 0.25, z);
   crate.rotation.y = Math.random() * Math.PI;
   crate.castShadow = true;
@@ -394,18 +431,24 @@ function createCrate(scene, x, z) {
 }
 
 function createEnergyPad(scene, x, z, color) {
-  const pad = new THREE.Mesh(
-    new THREE.RingGeometry(0.42, 0.58, 48),
-    new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.38,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    })
+  if (!isDecorationSafe(x, z)) return;
+
+  const pad = applyShaderData(
+    new THREE.Mesh(
+      new THREE.RingGeometry(0.42, 0.58, 48),
+      createGameMaterial(color, "decor")
+    ),
+    color,
+    "decor"
   );
 
   pad.rotation.x = -Math.PI / 2;
   pad.position.set(x, 0.07, z);
   scene.add(pad);
+}
+
+function applyShaderData(mesh, color, role) {
+  mesh.userData.baseColor = color;
+  mesh.userData.shaderRole = role;
+  return mesh;
 }
