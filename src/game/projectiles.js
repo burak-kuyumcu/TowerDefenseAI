@@ -75,7 +75,7 @@ export function updateProjectiles(scene) {
         hitResult.isCrit
       );
 
-      applySlowEffect(target, projectile.userData.slowEffect);
+      applySlowEffect(scene, target, projectile.userData.slowEffect);
       spawnHitEffect(scene, target.position);
 
       if (projectile.userData.splashEffect) {
@@ -163,12 +163,64 @@ function applySplashDamage(scene, centerPosition, splashEffect, mainHitWasCrit =
   }
 }
 
-function applySlowEffect(enemy, slowEffect) {
+function applySlowEffect(scene, enemy, slowEffect) {
   if (!slowEffect) return;
   if (enemy.userData.type?.startsWith("boss")) return;
 
-  enemy.userData.slowTimer = slowEffect.duration;
+  const stageSlowBonus = enemy.userData.stageSlowBonus ?? 1;
+
+  enemy.userData.slowTimer = Math.floor(
+    slowEffect.duration * stageSlowBonus
+  );
+
   enemy.userData.slowMultiplier = slowEffect.multiplier;
+  enemy.userData.isSlowed = true;
+
+  addSlowVisual(scene, enemy);
+}
+
+function addSlowVisual(scene, enemy) {
+  if (enemy.userData.slowVisual) {
+    enemy.userData.slowVisual.visible = true;
+    return;
+  }
+
+  const visual = new THREE.Group();
+
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.58, 48),
+    new THREE.MeshBasicMaterial({
+      color: 0x5eead4,
+      transparent: true,
+      opacity: 0.65,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+  );
+
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.03;
+
+  const crystal1 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.06, 0.22, 6),
+    new THREE.MeshBasicMaterial({
+      color: 0x99f6e4,
+      transparent: true,
+      opacity: 0.85
+    })
+  );
+
+  crystal1.position.set(0.28, 0.14, 0.12);
+
+  const crystal2 = crystal1.clone();
+  crystal2.position.set(-0.22, 0.12, -0.18);
+  crystal2.scale.setScalar(0.8);
+
+  visual.add(ring, crystal1, crystal2);
+  visual.userData.isSlowVisual = true;
+
+  enemy.add(visual);
+  enemy.userData.slowVisual = visual;
 }
 
 function cleanupProjectiles() {

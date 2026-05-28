@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import "./style.css";
 
-import { createSceneSetup } from "./core/sceneSetup.js";
+import {
+  createSceneSetup,
+  rebuildStageMap
+} from "./core/sceneSetup.js";
+
 import { initKeyboard, keys } from "./core/input.js";
 import { state } from "./game/state.js";
 
@@ -43,6 +47,7 @@ import { updateWavePreview } from "./game/wavePreview.js";
 import { updateEventLog } from "./game/eventLog.js";
 import { updateAIFeedback } from "./game/aiFeedback.js";
 import { initPathVisuals, updatePathVisuals } from "./game/pathVisuals.js";
+import { initStageVisuals, updateStageVisuals } from "./game/stageVisuals.js";
 import { updateTowerLabels } from "./game/towerLabels.js";
 
 import { initUIActions, updateUIActions } from "./game/uiActions.js";
@@ -55,6 +60,12 @@ import { initBaseSystem, updateBaseSystem } from "./game/base.js";
 import { toggleMute } from "./game/audio.js";
 import { updateBossAbilities } from "./game/bossAbilities.js";
 import { createPostProcessing } from "./game/postProcessing.js";
+
+import {
+  initNameShowcase,
+  toggleNameShowcaseCamera,
+  updateNameShowcaseCamera
+} from "./game/nameShowcase.js";
 
 import {
   createRangePreview,
@@ -71,7 +82,9 @@ import {
 import {
   updateCamera,
   updateLights,
-  moveSelectedObject
+  updateDirectionalLight,
+  moveSelectedObject,
+  rotateSelectedObject
 } from "./game/controls.js";
 
 const canvas = document.querySelector("#app");
@@ -89,6 +102,8 @@ const {
 
 const postProcessing = createPostProcessing(renderer);
 
+let renderedStageVersion = state.stageVersion;
+
 initKeyboard();
 createRangePreview(scene);
 initBaseSystem(scene, base);
@@ -97,7 +112,10 @@ initSettingsPanel(scene);
 initBuildPanel();
 initWaveControls(scene);
 initPathVisuals(scene);
+initStageVisuals(scene);
+updateStageVisuals();
 initTacticalOverlay(scene);
+initNameShowcase(scene);
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -122,11 +140,8 @@ function toggleHelp() {
 
 window.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    if (!state.started) {
-      startGame();
-    } else {
-      startNextWave(scene);
-    }
+    if (!state.started) startGame();
+    else startNextWave(scene);
     return;
   }
 
@@ -151,12 +166,14 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
+  if (e.key === "c" || e.key === "C") {
+    toggleNameShowcaseCamera(camera);
+    return;
+  }
+
   if (e.key === "h" || e.key === "H") {
-    if (e.shiftKey) {
-      spotLightHelper.visible = !spotLightHelper.visible;
-    } else {
-      toggleHelp();
-    }
+    if (e.shiftKey) spotLightHelper.visible = !spotLightHelper.visible;
+    else toggleHelp();
     return;
   }
 
@@ -250,18 +267,42 @@ window.addEventListener("contextmenu", (e) => {
     e.clientY
   );
 
-  if (clickedTower) {
-    sellTower(scene, clickedTower);
-  }
+  if (clickedTower) sellTower(scene, clickedTower);
 });
+
+function syncStageVisualsIfNeeded() {
+  if (renderedStageVersion === state.stageVersion) {
+    return;
+  }
+
+  rebuildStageMap(scene, base);
+
+  initPathVisuals(scene);
+  initStageVisuals(scene);
+  updateStageVisuals();
+
+  updateMinimap();
+
+  renderedStageVersion = state.stageVersion;
+}
 
 function animate() {
   requestAnimationFrame(animate);
 
+  syncStageVisualsIfNeeded();
+
+  const cameraControlledByNameShowcase = updateNameShowcaseCamera(camera);
+
   if (state.started && !state.gameOver && !state.paused) {
-    updateCamera(camera, keys);
+    if (!cameraControlledByNameShowcase) {
+      updateCamera(camera, keys);
+    }
+
     updateLights(spotLight, spotLightHelper, keys);
+    updateDirectionalLight(directionalLight, keys);
+
     moveSelectedObject(keys);
+    rotateSelectedObject(keys);
 
     updateSelector(selector);
 
@@ -299,6 +340,10 @@ function animate() {
     updatePathVisuals();
     updateTacticalSignals(scene);
     updateTacticalOverlay(scene);
+
+    updateLights(spotLight, spotLightHelper, keys);
+    updateDirectionalLight(directionalLight, keys);
+    rotateSelectedObject(keys);
   }
 
   updateHud();

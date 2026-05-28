@@ -1,5 +1,7 @@
 import { state } from "./state.js";
 import { getAIStrategyName, getAIPlanText } from "./aiDirector.js";
+import { getCurrentStage } from "./stages.js";
+import { getStageEffectText } from "./stageInfo.js";
 
 export function updateAIFeedback() {
   const content = document.querySelector("#aiFeedbackContent");
@@ -11,8 +13,11 @@ export function updateAIFeedback() {
   }
 
   const strategy = getAIStrategyName();
+  const stage = getCurrentStage();
 
   content.innerHTML = `
+    Stage: ${stage.name}<br>
+    Modifier: ${getStageEffectText()}<br>
     ${getAIPlanText()}<br>
     ${getBluffText()}<br>
     Locked Strategy: ${strategy}<br>

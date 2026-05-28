@@ -12,7 +12,10 @@ import {
 } from "./aiDirector.js";
 import { resetRelocationsForPreparation } from "./relocation.js";
 import { spawnTacticalSignal } from "./tacticalSignals.js";
-import { PATHS } from "../core/constants.js";
+import { getActivePaths } from "../core/constants.js";
+import { nextStage } from "./stages.js";
+import { refundAndClearTowersForStageChange } from "./stageCleanup.js";
+import { getStageEffectText } from "./stageInfo.js";
 
 let initialized = false;
 
@@ -47,7 +50,10 @@ export function updateWaveControls() {
   if (!state.started) button.textContent = "Start Game First";
   else if (state.waveActive) button.textContent = "Wave Running";
   else if (state.paused) button.textContent = "Paused";
-  else button.textContent = state.wave % 5 === 0 ? "Start Boss Wave" : "Start Next Wave";
+  else {
+    button.textContent =
+      state.wave % 5 === 0 ? "Start Boss Wave" : "Start Next Wave";
+  }
 }
 
 export function startNextWave(scene) {
@@ -69,7 +75,9 @@ export function startNextWave(scene) {
 
   if (aiStart.bluffApplied) {
     showAnnouncement(`🎭 AI BLUFF REVEALED: ${aiStart.strategy}`);
-    addEventLog(`AI bluff: showed ${aiStart.displayedStrategy}, executed ${aiStart.strategy}.`);
+    addEventLog(
+      `AI bluff: showed ${aiStart.displayedStrategy}, executed ${aiStart.strategy}.`
+    );
   } else if (feintApplied) {
     showAnnouncement("⚠ AI FEINT DETECTED! Route changed!");
     addEventLog(`AI feint detected. Route changed before Wave ${state.wave}.`);
@@ -98,15 +106,14 @@ export function updateWave(scene) {
   }
 
   if (state.spawned === maxEnemies && state.enemies.length === 0) {
-    completeWave(isBossWave);
+    completeWave(scene, isBossWave);
   }
 }
 
-function completeWave(completedWaveWasBoss) {
+function completeWave(scene, completedWaveWasBoss) {
   const bonusGold = completedWaveWasBoss ? 60 : 20;
 
   recordWaveResult();
-
   state.gold += bonusGold;
 
   showAnnouncement(
@@ -131,6 +138,7 @@ function completeWave(completedWaveWasBoss) {
 
   state.wave++;
 
+  updateStageProgression(scene);
   selectPathForWave();
   analyzeAndLockAIPlan();
 
@@ -153,14 +161,29 @@ function completeWave(completedWaveWasBoss) {
   addEventLog(getAIPlanText());
 }
 
-function selectPathForWave() {
-  if (state.wave % 5 === 0) {
-    state.currentPath = PATHS[2];
-    return;
-  }
+function updateStageProgression(scene) {
+  if (state.wave === 5 || state.wave === 9 || state.wave === 13) {
+    const stage = nextStage();
+    const refund = refundAndClearTowersForStageChange(scene);
+    const effectText = getStageEffectText();
 
-  const randomIndex = Math.floor(Math.random() * PATHS.length);
-  state.currentPath = PATHS[randomIndex];
+    state.stageVersion++;
+
+    showAnnouncement(
+      `NEW BATTLEFIELD: ${stage.name} | ${effectText} • Towers refunded +${refund}G`
+    );
+
+    addEventLog(
+      `Stage changed to ${stage.name}. Effect: ${effectText}. Towers refunded: +${refund}G.`
+    );
+  }
+}
+
+function selectPathForWave() {
+  const activePaths = getActivePaths();
+  const randomIndex = Math.floor(Math.random() * activePaths.length);
+
+  state.currentPath = activePaths[randomIndex];
 }
 
 function maybeApplyPathFeint() {
@@ -173,12 +196,13 @@ function maybeApplyPathFeint() {
 
   if (Math.random() > feintChance) return false;
 
-  const currentIndex = PATHS.indexOf(state.currentPath);
-  const possiblePaths = PATHS.filter((_, index) => index !== currentIndex);
+  const activePaths = getActivePaths();
 
-  if (possiblePaths.length === 0) return false;
+  if (activePaths.length <= 1) return false;
 
+  const possiblePaths = activePaths.filter((path) => path !== state.currentPath);
   const randomIndex = Math.floor(Math.random() * possiblePaths.length);
+
   state.currentPath = possiblePaths[randomIndex];
 
   return true;

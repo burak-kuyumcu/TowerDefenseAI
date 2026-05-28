@@ -12,7 +12,11 @@ export function createTowerLabel(scene, tower) {
     tower.position.z
   );
 
+  markTowerLabel(sprite, tower);
+
   tower.userData.levelLabel = sprite;
+  tower.userData.label = sprite;
+
   scene.add(sprite);
 }
 
@@ -25,6 +29,7 @@ export function updateTowerLabelText(tower) {
   if (!scene) return;
 
   scene.remove(oldSprite);
+  disposeLabel(oldSprite);
 
   const newSprite = makeLabelSprite(
     tower.userData.level ?? 1,
@@ -37,7 +42,11 @@ export function updateTowerLabelText(tower) {
     tower.position.z
   );
 
+  markTowerLabel(newSprite, tower);
+
   tower.userData.levelLabel = newSprite;
+  tower.userData.label = newSprite;
+
   scene.add(newSprite);
 }
 
@@ -57,10 +66,29 @@ export function updateTowerLabels(camera, towers) {
 }
 
 export function removeTowerLabel(scene, tower) {
-  if (!tower.userData.levelLabel) return;
+  const label = tower.userData.levelLabel || tower.userData.label;
 
-  scene.remove(tower.userData.levelLabel);
+  if (!label) return;
+
+  scene.remove(label);
+  disposeLabel(label);
+
   tower.userData.levelLabel = null;
+  tower.userData.label = null;
+}
+
+function markTowerLabel(sprite, tower) {
+  sprite.name = "TowerLabel";
+  sprite.userData.isTowerLabel = true;
+  sprite.userData.towerLabel = true;
+  sprite.userData.labelType = "tower";
+  sprite.userData.parentTower = tower;
+}
+
+function disposeLabel(sprite) {
+  sprite.material?.map?.dispose?.();
+  sprite.material?.dispose?.();
+  sprite.geometry?.dispose?.();
 }
 
 function getLabelHeight(tower) {

@@ -1,5 +1,9 @@
 import { state } from "./state.js";
-import { PATHS, BASE_POSITION } from "../core/constants.js";
+import {
+  PATHS,
+  getActiveBasePosition,
+  getActivePortalPosition
+} from "../core/constants.js";
 
 const MAP_MIN = -9;
 const MAP_MAX = 9;
@@ -14,7 +18,6 @@ function worldToMiniMap(x, z, canvas) {
 
 export function updateMinimap() {
   const canvas = document.querySelector("#minimap");
-
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
@@ -27,6 +30,7 @@ export function updateMinimap() {
   drawGrid(ctx, canvas);
   drawAllPaths(ctx, canvas);
   drawCurrentPath(ctx, canvas);
+  drawPortal(ctx, canvas);
   drawBase(ctx, canvas);
   drawTowers(ctx, canvas);
   drawEnemies(ctx, canvas);
@@ -57,7 +61,7 @@ function drawGrid(ctx, canvas) {
 
 function drawAllPaths(ctx, canvas) {
   for (const path of PATHS) {
-    drawPath(ctx, canvas, path, "rgba(154, 107, 50, 0.35)", 4);
+    drawPath(ctx, canvas, path, "rgba(154, 107, 50, 0.25)", 3);
   }
 }
 
@@ -78,22 +82,30 @@ function drawPath(ctx, canvas, path, color, width) {
   path.forEach((point, index) => {
     const p = worldToMiniMap(point.x, point.z, canvas);
 
-    if (index === 0) {
-      ctx.moveTo(p.x, p.y);
-    } else {
-      ctx.lineTo(p.x, p.y);
-    }
+    if (index === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
   });
 
   ctx.stroke();
 }
 
 function drawBase(ctx, canvas) {
-  const p = worldToMiniMap(BASE_POSITION.x, BASE_POSITION.z, canvas);
+  const base = getActiveBasePosition();
+  const p = worldToMiniMap(base.x, base.z, canvas);
 
   ctx.fillStyle = "#3b82f6";
   ctx.beginPath();
   ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPortal(ctx, canvas) {
+  const portal = getActivePortalPosition();
+  const p = worldToMiniMap(portal.x, portal.z, canvas);
+
+  ctx.fillStyle = "#fb923c";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
   ctx.fill();
 }
 
@@ -121,25 +133,15 @@ function drawEnemies(ctx, canvas) {
     const p = worldToMiniMap(enemy.position.x, enemy.position.z, canvas);
 
     ctx.fillStyle =
-      enemy.userData.type === "boss_purple"
-        ? "#a855f7"
-        : enemy.userData.type === "boss_crusher"
-          ? "#7f1d1d"
-          : enemy.userData.type === "boss_runner"
-            ? "#fb923c"
-            : enemy.userData.type === "boss_shield"
-              ? "#22c55e"
-              : enemy.userData.type === "boss_splitter"
-                ? "#eab308"
-                : enemy.userData.type === "boss_disruptor"
-                  ? "#06b6d4"
-                  : enemy.userData.type === "elite"
-                    ? "#ec4899"
-                    : enemy.userData.type === "tank"
-                      ? "#7f1d1d"
-                      : enemy.userData.type === "fast"
-                        ? "#f97316"
-                        : "#dc2626";
+      enemy.userData.type === "elite"
+        ? "#ec4899"
+        : enemy.userData.type?.startsWith("boss")
+          ? "#a855f7"
+          : enemy.userData.type === "tank"
+            ? "#7f1d1d"
+            : enemy.userData.type === "fast"
+              ? "#f97316"
+              : "#dc2626";
 
     ctx.beginPath();
     ctx.arc(

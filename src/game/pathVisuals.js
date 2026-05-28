@@ -16,6 +16,7 @@ export function updatePathVisuals() {
   if (pathMeshes.length === 0) return;
 
   const activePathSet = buildActivePathTileSet();
+
   const shouldHighlight =
     state.started &&
     !state.gameOver &&
@@ -27,9 +28,11 @@ export function updatePathVisuals() {
 
     if (shouldHighlight && isActive) {
       setMaterialColor(tile.material, 0xf59e0b);
+      setMaterialOpacity(tile.material, 1);
       setMaterialEmissive(tile.material, 0x7c2d12);
     } else {
-      setMaterialColor(tile.material, tile.userData.baseColor ?? 0x8b5a2b);
+      setMaterialColor(tile.material, tile.userData.baseColor ?? 0x6b4423);
+      setMaterialOpacity(tile.material, tile.userData.pathOpacity ?? 0.34);
       setMaterialEmissive(tile.material, 0x000000);
     }
   }
@@ -44,6 +47,14 @@ function setMaterialColor(material, color) {
   if (material?.uniforms?.uColor?.value?.set) {
     material.uniforms.uColor.value.set(color);
   }
+}
+
+function setMaterialOpacity(material, opacity) {
+  if (!material) return;
+
+  material.transparent = opacity < 1;
+  material.opacity = opacity;
+  material.depthWrite = opacity >= 1;
 }
 
 function setMaterialEmissive(material, color) {
@@ -65,18 +76,18 @@ function buildActivePathTileSet() {
     const start = path[i];
     const end = path[i + 1];
 
-    const dx = Math.sign(end.x - start.x);
-    const dz = Math.sign(end.z - start.z);
-
     let x = start.x;
     let z = start.z;
 
     result.add(`${x},${z}`);
 
-    while (x !== end.x || z !== end.z) {
-      if (x !== end.x) x += dx;
-      if (z !== end.z) z += dz;
+    while (x !== end.x) {
+      x += Math.sign(end.x - x);
+      result.add(`${x},${z}`);
+    }
 
+    while (z !== end.z) {
+      z += Math.sign(end.z - z);
       result.add(`${x},${z}`);
     }
   }

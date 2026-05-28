@@ -7,13 +7,22 @@ import { damageBase } from "./base.js";
 import { spawnEliteAura } from "./effects.js";
 import { showAnnouncement } from "./announcer.js";
 import { addEventLog } from "./eventLog.js";
+import { getCurrentStage } from "./stages.js";
 
 export function spawnEnemy(scene) {
   const enemyType = chooseEnemyType();
-  const config = getEnemyConfig(enemyType);
+  const stage = getCurrentStage();
+
+  const config = {
+    ...getEnemyConfig(enemyType)
+  };
+
+  config.speed *= stage.enemySpeedMultiplier ?? 1;
+  config.health = Math.floor(
+    config.health * (stage.enemyHealthMultiplier ?? 1)
+  );
 
   const enemy = createEnemyModel(config);
-
   const startPoint = state.currentPath[0];
 
   enemy.position.set(startPoint.x, startPoint.y, startPoint.z);
@@ -30,6 +39,10 @@ export function spawnEnemy(scene) {
 
     health: config.health,
     maxHealth: config.health,
+
+    stageId: stage.id,
+    stageSlowBonus: stage.slowBonus ?? 1,
+
     score: config.score,
     gold: config.gold,
     baseDamage: config.baseDamage,
@@ -148,10 +161,18 @@ function createTankEnemy(config) {
 function createEliteEnemy(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.CylinderGeometry(0.38, 0.45, 0.8, 6), config.color, true);
+  const body = mesh(
+    new THREE.CylinderGeometry(0.38, 0.45, 0.8, 6),
+    config.color,
+    true
+  );
   body.position.y = 0.45;
 
-  const crown = mesh(new THREE.TorusGeometry(0.34, 0.045, 10, 28), 0xf9a8d4, true);
+  const crown = mesh(
+    new THREE.TorusGeometry(0.34, 0.045, 10, 28),
+    0xf9a8d4,
+    true
+  );
   crown.position.y = 0.92;
   crown.rotation.x = Math.PI / 2;
 
@@ -170,7 +191,11 @@ function createPurpleBoss(config) {
   const body = mesh(new THREE.BoxGeometry(0.9, 1.05, 0.9), config.color, true);
   body.position.y = 0.65;
 
-  const crown = mesh(new THREE.TorusGeometry(0.58, 0.06, 12, 36), 0xc084fc, true);
+  const crown = mesh(
+    new THREE.TorusGeometry(0.58, 0.06, 12, 36),
+    0xc084fc,
+    true
+  );
   crown.position.y = 1.3;
   crown.rotation.x = Math.PI / 2;
 
@@ -231,7 +256,11 @@ function createRunnerBoss(config) {
 function createShieldBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.1, 20), config.color, true);
+  const body = mesh(
+    new THREE.CylinderGeometry(0.55, 0.65, 1.1, 20),
+    config.color,
+    true
+  );
   body.position.y = 0.65;
 
   const shield = mesh(new THREE.TorusGeometry(0.78, 0.06, 12, 40), 0x86efac, true);
@@ -352,14 +381,34 @@ export function updateEnemies(scene) {
 function updateEnemySlowState(enemy) {
   if (enemy.userData.slowTimer > 0) {
     enemy.userData.slowTimer--;
-    enemy.userData.speed =
-      enemy.userData.baseSpeed * enemy.userData.slowMultiplier;
 
-    setEnemyEmissive(enemy, 0x0f766e);
+    const stageSlowBonus = enemy.userData.stageSlowBonus ?? 1;
+
+    enemy.userData.speed =
+      enemy.userData.baseSpeed *
+      enemy.userData.slowMultiplier /
+      stageSlowBonus;
+
+    enemy.userData.isSlowed = true;
+
+    if (enemy.userData.slowVisual) {
+      enemy.userData.slowVisual.visible = true;
+
+      const pulse = 1 + Math.sin(Date.now() * 0.012) * 0.08;
+      enemy.userData.slowVisual.scale.set(pulse, 1, pulse);
+    }
+
+    setEnemyEmissive(enemy, 0x164e63);
     return;
   }
 
   enemy.userData.speed = enemy.userData.baseSpeed;
+  enemy.userData.isSlowed = false;
+
+  if (enemy.userData.slowVisual) {
+    enemy.userData.slowVisual.visible = false;
+  }
+
   setEnemyEmissive(enemy, 0x000000);
 }
 
@@ -377,8 +426,29 @@ function animateEnemy(enemy) {
 
 function setEnemyEmissive(enemy, color) {
   enemy.traverse((child) => {
-    if (!child.isMesh || !child.material?.emissive) return;
-    child.material.emissive.set(color);
+    if (!child.isMesh) return;
+
+    if (child.material?.emissive?.set) {
+      child.material.emissive.set(color);
+    }
+
+    if (child.material?.uniforms?.uEmissive?.value?.set) {
+      child.material.uniforms.uEmissive.value.set(color);
+    }
+
+    if (
+      child.material?.uniforms?.uEmissiveIntensity &&
+      color !== 0x000000
+    ) {
+      child.material.uniforms.uEmissiveIntensity.value = 0.65;
+    }
+
+    if (
+      child.material?.uniforms?.uEmissiveIntensity &&
+      color === 0x000000
+    ) {
+      child.material.uniforms.uEmissiveIntensity.value = 0;
+    }
   });
 }
 

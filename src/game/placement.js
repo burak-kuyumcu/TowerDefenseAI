@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { pathSet } from "../core/constants.js";
+import { getActivePathSet } from "../core/constants.js";
 
 export function getTowerCost(type = state.selectedTowerType) {
   if (type === "rapid") return 30;
@@ -12,8 +12,9 @@ export function getTowerCost(type = state.selectedTowerType) {
 
 export function getPlacementState() {
   const key = `${state.selectedTile.x},${state.selectedTile.z}`;
+  const activePathSet = getActivePathSet();
 
-  if (pathSet.has(key)) return "blocked-path";
+  if (activePathSet.has(key)) return "blocked-path";
   if (state.towerSet.has(key)) return "blocked-tower";
 
   const cost = getTowerCost();

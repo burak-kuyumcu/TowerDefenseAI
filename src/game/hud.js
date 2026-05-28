@@ -1,12 +1,24 @@
 import { state } from "./state.js";
 import { getAIStrategyName, getWaveType } from "./aiDirector.js";
 import { getShaderModeLabel } from "./materials.js";
+import { getCurrentStage } from "./stages.js";
+import { getStageEffectText } from "./stageInfo.js";
 
 export function updateHud() {
   document.querySelector("#score").textContent = state.score;
   document.querySelector("#wave").textContent = state.wave;
   document.querySelector("#gold").textContent = state.gold;
   document.querySelector("#baseHp").textContent = state.baseHp;
+
+  const stageNameEl = document.querySelector("#stageName");
+  if (stageNameEl) {
+    stageNameEl.textContent = getCurrentStage().name;
+  }
+
+  const stageEffectEl = document.querySelector("#stageEffect");
+  if (stageEffectEl) {
+    stageEffectEl.textContent = getStageEffectText();
+  }
 
   const comboEl = document.querySelector("#combo");
   if (comboEl) {
@@ -61,12 +73,4 @@ function formatTowerType(type) {
   if (type === "splash") return "Splash";
 
   return "Normal";
-}
-
-function formatShaderMode(mode) {
-  if (mode === "toon") return "Toon";
-  if (mode === "neon") return "Neon";
-  if (mode === "xray") return "X-Ray";
-
-  return "Standard";
 }

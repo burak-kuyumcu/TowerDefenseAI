@@ -6,6 +6,7 @@ export const state = {
   selectedObject: null,
 
   currentPath: PATHS[0],
+  stageVersion: 0,
 
   aiLockedStrategy: "Balanced",
   aiDisplayedStrategy: "Balanced",

@@ -4,11 +4,26 @@ export function showAnnouncement(text) {
   const el = document.querySelector("#announcer");
   if (!el) return;
 
-  el.textContent = text;
+  const isBattlefieldMessage =
+    text.includes("NEW BATTLEFIELD") ||
+    text.includes("New Battlefield");
+
+  if (isBattlefieldMessage) {
+    const [titlePart, effectPart] = text.split("|").map((part) => part.trim());
+
+    el.innerHTML = `
+      <div class="announcer-title">${titlePart}</div>
+      <div class="announcer-effect">${effectPart ?? ""}</div>
+    `;
+
+    timer = 180;
+  } else {
+    el.textContent = text;
+    timer = 120;
+  }
+
   el.style.opacity = "1";
   el.style.transform = "translateX(-50%) scale(1)";
-
-  timer = 120;
 }
 
 export function updateAnnouncer() {

@@ -1,5 +1,7 @@
 import { state } from "./state.js";
 import { getAIStrategyName, getWaveEnemyCount } from "./aiDirector.js";
+import { getCurrentStage } from "./stages.js";
+import { getStageEffectText } from "./stageInfo.js";
 
 export function updateWavePreview() {
   const content = document.querySelector("#wavePreviewContent");
@@ -12,11 +14,15 @@ export function updateWavePreview() {
 
   const isBossWave = state.wave % 5 === 0;
   const strategy = getAIStrategyName();
+  const stage = getCurrentStage();
+
   const expectedEnemies = isBossWave
     ? "1 Boss"
     : getWaveEnemyCount(state.enemiesPerWave);
 
   content.innerHTML = `
+    Stage: ${stage.name}<br>
+    Effect: ${getStageEffectText()}<br>
     Wave: ${state.wave}<br>
     Status: ${getWaveStatus()}<br>
     Type: ${isBossWave ? "Boss" : "Normal"}<br>

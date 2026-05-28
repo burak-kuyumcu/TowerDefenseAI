@@ -557,6 +557,11 @@ canvas#app {
   font-weight: 700;
 }
 
+
+
+
+
+
 @media (max-width: 1100px) {
   #aiFeedback {
     display: none;
@@ -610,4 +615,185 @@ canvas#app {
 }
 #help.hidden {
   display: none;
+}
+
+/* FINAL RESPONSIVE RIGHT UI LAYOUT */
+
+#help {
+  top: 14px;
+  right: 14px;
+  width: 250px;
+  max-height: 58vh;
+  overflow-y: auto;
+  font-size: 9.5px;
+  line-height: 1.12;
+  padding: 8px 10px;
+}
+
+#help b {
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+#help div {
+  margin-bottom: 0;
+}
+
+#help br {
+  display: block;
+  margin: 2px 0;
+  content: "";
+}
+
+#help::-webkit-scrollbar {
+  width: 6px;
+}
+
+#help::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.45);
+  border-radius: 999px;
+}
+
+#buildPanel {
+  top: auto;
+  right: 14px;
+  bottom: 190px;
+  width: 180px;
+  z-index: 18;
+}
+
+#minimap {
+  right: 14px;
+  bottom: 14px;
+  z-index: 15;
+}
+
+#wavePreview {
+  right: 210px;
+  bottom: 14px;
+}
+
+#settingsButton {
+  right: 285px;
+  top: 14px;
+}
+
+@media (max-width: 1550px) {
+  #help {
+    width: 245px;
+    max-height: 56vh;
+    font-size: 9px;
+  }
+
+  #buildPanel {
+    width: 170px;
+    bottom: 185px;
+  }
+
+  #wavePreview {
+    right: 195px;
+  }
+}
+
+@media (max-height: 850px) {
+  #help {
+    max-height: 52vh;
+    font-size: 8.8px;
+  }
+
+  #buildPanel {
+    bottom: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  #help {
+    display: none;
+  }
+
+  #settingsButton {
+    right: 14px;
+    top: 14px;
+  }
+
+  #hud {
+    width: 195px;
+    font-size: 11px;
+  }
+
+  #actionPanel,
+  #selectedInfo {
+    width: 225px;
+    font-size: 11px;
+  }
+
+  #selectedInfo {
+    bottom: 165px;
+    max-height: 240px;
+  }
+
+  #minimap {
+    width: 130px;
+    height: 130px;
+  }
+
+  #wavePreview,
+  #eventLog,
+  #aiFeedback {
+    display: none;
+  }
+}
+
+#help.hidden {
+  display: none;
+}
+
+/* HELP SCROLL FINAL FIX */
+
+#help {
+  max-height: 48vh;
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.65) rgba(15, 23, 42, 0.4);
+}
+
+#help::-webkit-scrollbar {
+  width: 8px;
+}
+
+#help::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 999px;
+}
+
+#help::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.7);
+  border-radius: 999px;
+}
+/* BATTLEFIELD ANNOUNCER */
+
+#announcer {
+  min-width: 360px;
+  max-width: 680px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.announcer-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #facc15;
+  text-shadow:
+    0 0 12px rgba(250, 204, 21, 0.8),
+    0 0 24px rgba(249, 115, 22, 0.5);
+}
+
+.announcer-effect {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #bae6fd;
+  text-shadow:
+    0 0 10px rgba(56, 189, 248, 0.75);
 }
