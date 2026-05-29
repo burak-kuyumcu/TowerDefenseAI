@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { state } from "./state.js";
+import { state } from "../game/state.js";
 import { GRID_MIN, GRID_MAX } from "../core/constants.js";
 import { updatePlacementVisual } from "./placement.js";
 

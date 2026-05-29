@@ -14,7 +14,7 @@ import {
   updateTowers,
   getClickedTower,
   cycleSelectedTowerTargetMode
-} from "./game/towers.js";
+} from "./entities/towers.js";
 
 import { upgradeSelectedTower, sellTower } from "./game/upgrade.js";
 
@@ -23,54 +23,59 @@ import {
   initWaveControls,
   updateWaveControls,
   startNextWave
-} from "./game/wave.js";
+} from "./systems/wave.js";
 
-import { updateEnemies, cleanupEnemies } from "./game/enemies.js";
-import { updateProjectiles } from "./game/projectiles.js";
-import { updateHealthBars } from "./game/healthBars.js";
-import { updateEffects } from "./game/effects.js";
-import { updateFloatingTexts } from "./game/floatingText.js";
-import { updateTacticalSignals } from "./game/tacticalSignals.js";
+import { updateEnemies, cleanupEnemies } from "./entities/enemies.js";
+import { updateProjectiles } from "./entities/projectiles.js";
+
+import { updateHealthBars } from "./visuals/healthBars.js";
+import { updateEffects } from "./visuals/effects.js";
+import { updateFloatingTexts } from "./visuals/floatingText.js";
+import { updateTacticalSignals } from "./visuals/tacticalSignals.js";
+
 import {
   initTacticalOverlay,
   updateTacticalOverlay
-} from "./game/tacticalOverlay.js";
-import { updateCombo } from "./game/combo.js";
+} from "./visuals/tacticalOverlay.js";
 
-import { updateHud } from "./game/hud.js";
-import { updateOverlay } from "./game/overlay.js";
-import { updateMinimap } from "./game/minimap.js";
-import { updateSelectedInfo } from "./game/selectedInfo.js";
-import { updateAnnouncer } from "./game/announcer.js";
-import { updateBossHud } from "./game/bossHud.js";
-import { updateWavePreview } from "./game/wavePreview.js";
-import { updateEventLog } from "./game/eventLog.js";
-import { updateAIFeedback } from "./game/aiFeedback.js";
-import { initPathVisuals, updatePathVisuals } from "./game/pathVisuals.js";
-import { initStageVisuals, updateStageVisuals } from "./game/stageVisuals.js";
-import { updateTowerLabels } from "./game/towerLabels.js";
+import { updateCombo } from "./systems/combo.js";
 
-import { initUIActions, updateUIActions } from "./game/uiActions.js";
-import { initSettingsPanel, updateSettingsPanel } from "./game/settingsPanel.js";
-import { initBuildPanel, updateBuildPanel } from "./game/buildPanel.js";
+import { initPathVisuals, updatePathVisuals } from "./visuals/pathVisuals.js";
+import { initStageVisuals, updateStageVisuals } from "./visuals/stageVisuals.js";
+import { updateTowerLabels } from "./visuals/towerLabels.js";
 
-import { toggleShaderMode } from "./game/materials.js";
-import { startGame, togglePause, restartGame } from "./game/gameFlow.js";
-import { initBaseSystem, updateBaseSystem } from "./game/base.js";
+import { updateHud } from "./ui/hud.js";
+import { updateOverlay } from "./ui/overlay.js";
+import { updateMinimap } from "./ui/minimap.js";
+import { updateSelectedInfo } from "./ui/selectedInfo.js";
+import { updateAnnouncer } from "./ui/announcer.js";
+import { updateBossHud } from "./ui/bossHud.js";
+import { updateWavePreview } from "./ui/wavePreview.js";
+import { updateEventLog } from "./ui/eventLog.js";
+import { updateAIFeedback } from "./ui/aiFeedback.js";
+
+import { initUIActions, updateUIActions } from "./ui/uiActions.js";
+import { initSettingsPanel, updateSettingsPanel } from "./ui/settingsPanel.js";
+import { initBuildPanel, updateBuildPanel } from "./ui/buildPanel.js";
+
+import { toggleShaderMode } from "./visuals/materials.js";
+import { startGame, togglePause, restartGame } from "./systems/gameFlow.js";
+import { initBaseSystem, updateBaseSystem } from "./systems/base.js";
 import { toggleMute } from "./game/audio.js";
-import { updateBossAbilities } from "./game/bossAbilities.js";
-import { createPostProcessing } from "./game/postProcessing.js";
+import { updateBossAbilities } from "./entities/bossAbilities.js";
+import { createPostProcessing } from "./visuals/postProcessing.js";
+import { activateSelectedTowerUltimate } from "./entities/towerUltimates.js";
 
 import {
   initNameShowcase,
   toggleNameShowcaseCamera,
   updateNameShowcaseCamera
-} from "./game/nameShowcase.js";
+} from "./visuals/nameShowcase.js";
 
 import {
   createRangePreview,
   updateRangePreview
-} from "./game/rangePreview.js";
+} from "./visuals/rangePreview.js";
 
 import {
   updateSelectorFromMouse,
@@ -85,7 +90,7 @@ import {
   updateDirectionalLight,
   moveSelectedObject,
   rotateSelectedObject
-} from "./game/controls.js";
+} from "./systems/controls.js";
 
 const canvas = document.querySelector("#app");
 
@@ -185,17 +190,38 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "4") state.selectedTowerType = "slow";
   if (e.key === "5") state.selectedTowerType = "splash";
 
-  if (e.key === "t" || e.key === "T") placeTower(scene);
-  if (e.key === "u" || e.key === "U") upgradeSelectedTower();
-  if (e.key === "g" || e.key === "G") cycleSelectedTowerTargetMode();
+  if (e.key === "t" || e.key === "T") {
+    placeTower(scene);
+    return;
+  }
+
+  if (e.key === "u" || e.key === "U") {
+    upgradeSelectedTower();
+    return;
+  }
+
+  if (e.key === "f" || e.key === "F") {
+    activateSelectedTowerUltimate(scene);
+    return;
+  }
+
+  if (e.key === "g" || e.key === "G") {
+    cycleSelectedTowerTargetMode();
+    return;
+  }
 
   if (e.key === "m" || e.key === "M") {
     toggleShaderMode(scene);
     return;
   }
 
-  if (e.key === "o" || e.key === "O") spotLight.visible = !spotLight.visible;
-  if (e.key === "p" || e.key === "P") directionalLight.visible = !directionalLight.visible;
+  if (e.key === "o" || e.key === "O") {
+    spotLight.visible = !spotLight.visible;
+  }
+
+  if (e.key === "p" || e.key === "P") {
+    directionalLight.visible = !directionalLight.visible;
+  }
 
   if (e.key === "+" || e.key === "=") {
     spotLight.intensity = Math.min(8, spotLight.intensity + 0.25);

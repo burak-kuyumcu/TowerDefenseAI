@@ -6,16 +6,18 @@ import {
   getActivePortalPosition,
   MAP_SIZE
 } from "./constants.js";
-import { createGameMaterial } from "../game/materials.js";
+import { createGameMaterial } from "../visuals/materials.js";
 import { getCurrentStage } from "../game/stages.js";
 
 let portalGroup = null;
 let portalLight = null;
 let baseLight = null;
+let ambientLightRef = null;
+let directionalLightRef = null;
+let groundMeshRef = null;
 
 export function createSceneSetup(canvas) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1f2937);
 
   const camera = new THREE.PerspectiveCamera(
     60,
@@ -37,9 +39,11 @@ export function createSceneSetup(canvas) {
   directionalLight.position.set(5, 14, 7);
   directionalLight.castShadow = true;
   scene.add(directionalLight);
+  directionalLightRef = directionalLight;
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.34);
   scene.add(ambientLight);
+  ambientLightRef = ambientLight;
 
   const spotLight = new THREE.SpotLight(0xffffff, 3.5);
   spotLight.position.set(-4, 11, 5);
@@ -67,9 +71,13 @@ export function createSceneSetup(canvas) {
     0x256b2f,
     "ground"
   );
+
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
+  groundMeshRef = ground;
+
+  applyStageAtmosphere(scene);
 
   const grid = new THREE.GridHelper(MAP_SIZE, MAP_SIZE, 0x9ca3af, 0x365f46);
   grid.position.y = 0.025;
@@ -110,6 +118,7 @@ export function rebuildStageMap(scene, base) {
   clearPathTiles(scene);
   clearStageDecorations(scene);
 
+  applyStageAtmosphere(scene);
   createPathTiles(scene);
   addStageDecorations(scene);
 
@@ -123,17 +132,130 @@ export function rebuildStageMap(scene, base) {
   baseLight?.position.set(basePosition.x, 2.2, basePosition.z);
 }
 
+function applyStageAtmosphere(scene) {
+  const stage = getCurrentStage();
+
+  let background = 0x1f2937;
+  let fogColor = 0x1f2937;
+  let fogNear = 18;
+  let fogFar = 42;
+  let ambientColor = 0xffffff;
+  let ambientIntensity = 0.34;
+  let directionalColor = 0xffffff;
+  let directionalIntensity = 1.45;
+  let groundColor = stage.groundColor ?? 0x256b2f;
+
+  if (stage.id === 1) {
+    background = 0x1f3527;
+    fogColor = 0x1f3527;
+    groundColor = 0x2f6b2f;
+    ambientColor = 0xdfffe2;
+    ambientIntensity = 0.38;
+    directionalColor = 0xf4ffe8;
+    directionalIntensity = 1.5;
+  }
+
+  if (stage.id === 2) {
+    background = 0x3b2418;
+    fogColor = 0x5a2f1f;
+    groundColor = 0x7a5535;
+    ambientColor = 0xffd7a3;
+    ambientIntensity = 0.36;
+    directionalColor = 0xffb36b;
+    directionalIntensity = 1.6;
+  }
+
+  if (stage.id === 3) {
+    background = 0x182c3d;
+    fogColor = 0x8ecae6;
+    groundColor = 0x6c91b0;
+    fogNear = 12;
+    fogFar = 34;
+    ambientColor = 0xd8f3ff;
+    ambientIntensity = 0.42;
+    directionalColor = 0xbdefff;
+    directionalIntensity = 1.35;
+  }
+
+  if (stage.id === 4) {
+    background = 0x29211a;
+    fogColor = 0x6b5a42;
+    groundColor = 0x5a4b3b;
+    fogNear = 14;
+    fogFar = 36;
+    ambientColor = 0xffe0aa;
+    ambientIntensity = 0.32;
+    directionalColor = 0xffcc7a;
+    directionalIntensity = 1.42;
+  }
+
+  scene.background = new THREE.Color(background);
+  scene.fog = new THREE.Fog(fogColor, fogNear, fogFar);
+
+  if (groundMeshRef) {
+    setMaterialColor(groundMeshRef.material, groundColor);
+    groundMeshRef.userData.baseColor = groundColor;
+  }
+
+  if (ambientLightRef) {
+    ambientLightRef.color.set(ambientColor);
+    ambientLightRef.intensity = ambientIntensity;
+  }
+
+  if (directionalLightRef) {
+    directionalLightRef.color.set(directionalColor);
+    directionalLightRef.intensity = directionalIntensity;
+  }
+}
+
+function getStageRoadColor() {
+  const stage = getCurrentStage();
+
+  if (stage.id === 1) return 0xc8841a;
+  if (stage.id === 2) return 0xb86d2a;
+  if (stage.id === 3) return 0xd7edf7;
+  if (stage.id === 4) return 0xc7aa6b;
+
+  return stage.roadColor ?? 0x6b4423;
+}
+
+function getStageBorderColor() {
+  const stage = getCurrentStage();
+
+  if (stage.id === 1) return 0x4b2e16;
+  if (stage.id === 2) return 0x78350f;
+  if (stage.id === 3) return 0xe0f2fe;
+  if (stage.id === 4) return 0x8a7354;
+
+  return 0x4b5563;
+}
+
+function setMaterialColor(material, color) {
+  if (material?.color?.set) {
+    material.color.set(color);
+  }
+
+  if (material?.uniforms?.uColor?.value?.set) {
+    material.uniforms.uColor.value.set(color);
+  }
+}
+
 function clearPathTiles(scene) {
-  const oldTiles = [];
+  const oldObjects = [];
 
   scene.traverse((object) => {
-    if (object.isMesh && object.userData?.isPathTile) {
-      oldTiles.push(object);
+    if (
+      object.userData?.isPathTile ||
+      object.userData?.isPathBorder ||
+      object.userData?.isPathGlow ||
+      object.userData?.isRoadDecoration
+    ) {
+      oldObjects.push(object);
     }
   });
 
-  for (const tile of oldTiles) {
-    removeObject(scene, tile);
+  for (const object of oldObjects) {
+    removeObject(scene, object);
   }
 }
 
@@ -179,31 +301,101 @@ function createZone(scene, x, z, width, depth, color, opacity) {
 
 function createPathTiles(scene) {
   const activeTiles = getActivePathTiles();
+  const activePathSet = getActivePathSet();
+  const roadColor = getStageRoadColor();
 
   activeTiles.forEach((p) => {
-    const tile = applyShaderData(
+    createRoadTile(scene, p.x, p.z, roadColor);
+    createRoadBorders(scene, p.x, p.z, activePathSet);
+  });
+}
+
+function createRoadTile(scene, x, z, roadColor) {
+  const tile = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(1, 0.08, 1),
+      createGameMaterial(roadColor, "path")
+    ),
+    roadColor,
+    "path"
+  );
+
+  tile.position.set(x, 0.045, z);
+  tile.receiveShadow = true;
+  tile.userData.isPathTile = true;
+  tile.userData.pathKey = `${x},${z}`;
+  tile.userData.pathOpacity = 0.42;
+
+  if (tile.material) {
+    tile.material.transparent = true;
+    tile.material.opacity = 0.42;
+    tile.material.depthWrite = false;
+  }
+
+  scene.add(tile);
+
+  const glow = applyShaderData(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(0.92, 0.92),
+      createGameMaterial(roadColor, "path")
+    ),
+    roadColor,
+    "path"
+  );
+
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(x, 0.083, z);
+  glow.userData.isPathGlow = true;
+  glow.userData.pathKey = `${x},${z}`;
+
+  if (glow.material) {
+    glow.material.transparent = true;
+    glow.material.opacity = 0.12;
+    glow.material.depthWrite = false;
+  }
+
+  scene.add(glow);
+}
+
+function createRoadBorders(scene, x, z, activePathSet) {
+  const borderColor = getStageBorderColor();
+
+  const directions = [
+    { dx: 0, dz: -1, px: 0, pz: -0.52, sx: 0.86, sz: 0.08 },
+    { dx: 0, dz: 1, px: 0, pz: 0.52, sx: 0.86, sz: 0.08 },
+    { dx: -1, dz: 0, px: -0.52, pz: 0, sx: 0.08, sz: 0.86 },
+    { dx: 1, dz: 0, px: 0.52, pz: 0, sx: 0.08, sz: 0.86 }
+  ];
+
+  for (const dir of directions) {
+    const neighborKey = `${x + dir.dx},${z + dir.dz}`;
+
+    if (activePathSet.has(neighborKey)) continue;
+
+    const border = applyShaderData(
       new THREE.Mesh(
-        new THREE.BoxGeometry(1, 0.08, 1),
-        createGameMaterial(0x6b4423, "path")
+        new THREE.BoxGeometry(dir.sx, 0.1, dir.sz),
+        createGameMaterial(borderColor, "decor")
       ),
-      0x6b4423,
-      "path"
+      borderColor,
+      "decor"
     );
 
-    tile.position.set(p.x, 0.045, p.z);
-    tile.receiveShadow = true;
-    tile.userData.isPathTile = true;
-    tile.userData.pathKey = `${p.x},${p.z}`;
-    tile.userData.pathOpacity = 0.34;
+    border.position.set(x + dir.px, 0.12, z + dir.pz);
+    border.castShadow = true;
+    border.receiveShadow = true;
 
-    if (tile.material) {
-      tile.material.transparent = true;
-      tile.material.opacity = 0.34;
-      tile.material.depthWrite = false;
+    border.userData.isPathBorder = true;
+    border.userData.pathKey = `${x},${z}`;
+    border.userData.borderOpacity = 0.72;
+
+    if (border.material) {
+      border.material.transparent = true;
+      border.material.opacity = 0.72;
     }
 
-    scene.add(tile);
-  });
+    scene.add(border);
+  }
 }
 
 function createPortal(scene) {
@@ -424,6 +616,10 @@ function addStageDecorations(scene) {
     createStageTree(scene, -7, 7, 0x166534);
     createStageTree(scene, -6, 3, 0x15803d);
     createStageTree(scene, 6, -6, 0x14532d);
+    createBush(scene, -5.5, 6.2);
+    createBush(scene, 4.5, -6.5);
+    createLog(scene, -6.8, -2.6);
+    createMushroomCluster(scene, 6.3, 2.4);
     createEnergyPad(scene, -6.5, 6.5, 0x22c55e, true);
     return;
   }
@@ -433,6 +629,9 @@ function addStageDecorations(scene) {
     createCanyonRock(scene, -4, 6);
     createCanyonRock(scene, 5, -6);
     createCanyonRock(scene, 7, -3);
+    createGroundCrack(scene, -6.2, 1.5, 0x3b1d12);
+    createGroundCrack(scene, 4.7, 5.6, 0x3b1d12);
+    createBonePile(scene, -2.5, 6.8);
     createEnergyPad(scene, 6.5, -6.5, 0xf97316, true);
     return;
   }
@@ -442,6 +641,9 @@ function addStageDecorations(scene) {
     createIceCrystal(scene, -3, 7);
     createIceCrystal(scene, 4, -7);
     createIceCrystal(scene, 7, -4);
+    createIcePatch(scene, -6.5, 1.5);
+    createIcePatch(scene, 3.8, 6.4);
+    createSnowPile(scene, -1.5, -6.8);
     createEnergyPad(scene, 6.5, 6.5, 0x67e8f9, true);
     return;
   }
@@ -452,6 +654,9 @@ function addStageDecorations(scene) {
     createRuinsColumn(scene, 5, -7);
     createRuinsBlock(scene, 6, 7);
     createRuinsBlock(scene, -6, 7);
+    createStonePlate(scene, -2.8, 6.5);
+    createStonePlate(scene, 2.5, -6.5);
+    createBrokenArch(scene, 6.7, 1.8);
     createEnergyPad(scene, 6.5, -6.5, 0xc7aa6b, true);
   }
 }
@@ -715,6 +920,258 @@ function createEnergyPad(scene, x, z, color, isStageDecoration = false) {
   }
 
   scene.add(pad);
+}
+
+function createBush(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+
+  const colors = [0x14532d, 0x166534, 0x15803d];
+
+  for (let i = 0; i < 3; i++) {
+    const bush = applyShaderData(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(0.28 + i * 0.04, 12, 12),
+        createGameMaterial(colors[i], "decor")
+      ),
+      colors[i],
+      "decor"
+    );
+
+    bush.position.set(i * 0.22 - 0.22, 0.22, (i % 2) * 0.16);
+    bush.scale.y = 0.65;
+    bush.castShadow = true;
+    bush.receiveShadow = true;
+    group.add(bush);
+  }
+
+  markStageDecoration(group);
+  scene.add(group);
+}
+
+function createLog(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const log = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.17, 0.9, 12),
+      createGameMaterial(0x7c2d12, "decor")
+    ),
+    0x7c2d12,
+    "decor"
+  );
+
+  log.rotation.z = Math.PI / 2;
+  log.rotation.y = Math.random() * Math.PI;
+  log.position.set(x, 0.18, z);
+  log.castShadow = true;
+  log.receiveShadow = true;
+
+  markStageDecoration(log);
+  scene.add(log);
+}
+
+function createMushroomCluster(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+
+  for (let i = 0; i < 3; i++) {
+    const stem = applyShaderData(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.045, 0.18, 8),
+        createGameMaterial(0xfef3c7, "decor")
+      ),
+      0xfef3c7,
+      "decor"
+    );
+
+    const cap = applyShaderData(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 10, 10),
+        createGameMaterial(i === 1 ? 0xdc2626 : 0xf97316, "decor")
+      ),
+      i === 1 ? 0xdc2626 : 0xf97316,
+      "decor"
+    );
+
+    stem.position.set(i * 0.16 - 0.16, 0.09, i % 2 === 0 ? 0.05 : -0.05);
+    cap.position.set(stem.position.x, 0.2, stem.position.z);
+    cap.scale.y = 0.55;
+
+    group.add(stem, cap);
+  }
+
+  markStageDecoration(group);
+  scene.add(group);
+}
+
+function createGroundCrack(scene, x, z, color) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0.065, z);
+
+  for (let i = 0; i < 4; i++) {
+    const crack = applyShaderData(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.5 - i * 0.06, 0.018, 0.035),
+        createGameMaterial(color, "decor")
+      ),
+      color,
+      "decor"
+    );
+
+    crack.position.set(i * 0.23, 0, (Math.random() - 0.5) * 0.28);
+    crack.rotation.y = Math.random() * Math.PI;
+    group.add(crack);
+  }
+
+  markStageDecoration(group);
+  scene.add(group);
+}
+
+function createBonePile(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0.08, z);
+
+  for (let i = 0; i < 3; i++) {
+    const bone = applyShaderData(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.035, 0.48, 8),
+        createGameMaterial(0xfef3c7, "decor")
+      ),
+      0xfef3c7,
+      "decor"
+    );
+
+    bone.rotation.z = Math.PI / 2;
+    bone.rotation.y = i * 0.75;
+    bone.position.set((i - 1) * 0.14, 0.04, (i % 2) * 0.12);
+    group.add(bone);
+  }
+
+  markStageDecoration(group);
+  scene.add(group);
+}
+
+function createIcePatch(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const patch = applyShaderData(
+    new THREE.Mesh(
+      new THREE.CircleGeometry(0.55, 24),
+      createGameMaterial(0xbae6fd, "decor")
+    ),
+    0xbae6fd,
+    "decor"
+  );
+
+  patch.rotation.x = -Math.PI / 2;
+  patch.position.set(x, 0.06, z);
+  patch.scale.set(1.3, 0.65, 1);
+
+  if (patch.material) {
+    patch.material.transparent = true;
+    patch.material.opacity = 0.42;
+    patch.material.depthWrite = false;
+  }
+
+  markStageDecoration(patch);
+  scene.add(patch);
+}
+
+function createSnowPile(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+
+  for (let i = 0; i < 4; i++) {
+    const snow = applyShaderData(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(0.18 + i * 0.035, 12, 12),
+        createGameMaterial(0xe0f2fe, "decor")
+      ),
+      0xe0f2fe,
+      "decor"
+    );
+
+    snow.position.set(i * 0.18 - 0.25, 0.13, (i % 2) * 0.15);
+    snow.scale.y = 0.35;
+    group.add(snow);
+  }
+
+  markStageDecoration(group);
+  scene.add(group);
+}
+
+function createStonePlate(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const plate = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.95, 0.06, 0.62),
+      createGameMaterial(0x8a7354, "decor")
+    ),
+    0x8a7354,
+    "decor"
+  );
+
+  plate.position.set(x, 0.07, z);
+  plate.rotation.y = Math.random() * Math.PI;
+  plate.castShadow = true;
+  plate.receiveShadow = true;
+
+  markStageDecoration(plate);
+  scene.add(plate);
+}
+
+function createBrokenArch(scene, x, z) {
+  if (!isDecorationSafe(x, z)) return;
+
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+
+  const left = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.95, 0.22),
+      createGameMaterial(0x8a7354, "decor")
+    ),
+    0x8a7354,
+    "decor"
+  );
+  left.position.set(-0.28, 0.48, 0);
+
+  const right = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.68, 0.22),
+      createGameMaterial(0x8a7354, "decor")
+    ),
+    0x8a7354,
+    "decor"
+  );
+  right.position.set(0.28, 0.34, 0);
+
+  const top = applyShaderData(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.18, 0.24),
+      createGameMaterial(0xc7aa6b, "decor")
+    ),
+    0xc7aa6b,
+    "decor"
+  );
+  top.position.set(0, 0.98, 0);
+  top.rotation.z = -0.22;
+
+  group.add(left, right, top);
+  markStageDecoration(group);
+  scene.add(group);
 }
 
 function removeObject(scene, object) {

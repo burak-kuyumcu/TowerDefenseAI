@@ -1,0 +1,209 @@
+import { state } from "../game/state.js";
+import { spawnEnemy } from "../entities/enemies.js";
+import { showAnnouncement } from "../ui/announcer.js";
+import { addEventLog } from "../ui/eventLog.js";
+import {
+  analyzeAndLockAIPlan,
+  prepareWaveStartAIPlan,
+  getAIStrategyName,
+  getAIPlanText,
+  getWaveEnemyCount,
+  recordWaveResult
+} from "../ai/aiDirector.js";
+import { resetRelocationsForPreparation } from "../systems/relocation.js";
+import { spawnTacticalSignal } from "../visuals/tacticalSignals.js";
+import { getActivePaths } from "../core/constants.js";
+import { nextStage } from "../game/stages.js";
+import { refundAndClearTowersForStageChange } from "../systems/stageCleanup.js";
+import { getStageEffectText } from "../ai/stageInfo.js";
+
+let initialized = false;
+
+export function initWaveControls(scene) {
+  if (initialized) return;
+  initialized = true;
+
+  const button = document.querySelector("#startWaveButton");
+
+  if (button) {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      startNextWave(scene);
+    });
+  }
+}
+
+export function updateWaveControls() {
+  const button = document.querySelector("#startWaveButton");
+  if (!button) return;
+
+  const canStart =
+    state.started &&
+    !state.gameOver &&
+    !state.paused &&
+    state.waitingForNextWave &&
+    state.enemies.length === 0;
+
+  button.disabled = !canStart;
+
+  if (!state.started) button.textContent = "Start Game First";
+  else if (state.waveActive) button.textContent = "Wave Running";
+  else if (state.paused) button.textContent = "Paused";
+  else {
+    button.textContent =
+      state.wave % 5 === 0 ? "Start Boss Wave" : "Start Next Wave";
+  }
+}
+
+export function startNextWave(scene) {
+  if (!state.started) return;
+  if (state.gameOver || state.paused) return;
+  if (state.waveActive) return;
+  if (state.enemies.length > 0) return;
+
+  const aiStart = prepareWaveStartAIPlan();
+  const strategy = getAIStrategyName();
+  const feintApplied = maybeApplyPathFeint();
+
+  spawnTacticalSignal(scene, strategy);
+
+  state.spawned = 0;
+  state.spawnTimer = 0;
+  state.waveActive = true;
+  state.waitingForNextWave = false;
+
+  if (aiStart.bluffApplied) {
+    showAnnouncement(`🎭 AI BLUFF REVEALED: ${aiStart.strategy}`);
+    addEventLog(
+      `AI bluff: showed ${aiStart.displayedStrategy}, executed ${aiStart.strategy}.`
+    );
+  } else if (feintApplied) {
+    showAnnouncement("⚠ AI FEINT DETECTED! Route changed!");
+    addEventLog(`AI feint detected. Route changed before Wave ${state.wave}.`);
+  } else {
+    showAnnouncement(`AI Locked: ${strategy}`);
+    addEventLog(`Wave ${state.wave} started. AI: ${strategy}.`);
+  }
+
+  addEventLog(getAIPlanText());
+}
+
+export function updateWave(scene) {
+  if (!state.waveActive) return;
+
+  const isBossWave = state.wave % 5 === 0;
+  const maxEnemies = isBossWave ? 1 : getWaveEnemyCount(state.enemiesPerWave);
+
+  state.spawnTimer++;
+
+  if (state.spawned < maxEnemies) {
+    if (state.spawnTimer > 60) {
+      spawnEnemy(scene);
+      state.spawned++;
+      state.spawnTimer = 0;
+    }
+  }
+
+  if (state.spawned === maxEnemies && state.enemies.length === 0) {
+    completeWave(scene, isBossWave);
+  }
+}
+
+function completeWave(scene, completedWaveWasBoss) {
+  const bonusGold = completedWaveWasBoss ? 60 : 20;
+
+  recordWaveResult();
+  state.gold += bonusGold;
+
+  showAnnouncement(
+    completedWaveWasBoss
+      ? `Boss Defeated! +${bonusGold}G`
+      : `Wave Cleared! +${bonusGold}G`
+  );
+
+  addEventLog(
+    completedWaveWasBoss
+      ? `Boss defeated. +${bonusGold} gold.`
+      : `Wave ${state.wave} cleared. +${bonusGold} gold.`
+  );
+
+  if (state.aiMemory.lastDamageDealt > 0) {
+    addEventLog(
+      `AI memory: ${state.aiMemory.lastStrategy} dealt ${state.aiMemory.lastDamageDealt} base damage.`
+    );
+  } else {
+    addEventLog(`AI memory: ${state.aiMemory.lastStrategy} failed to damage base.`);
+  }
+
+  state.wave++;
+
+  updateStageProgression(scene);
+  selectPathForWave();
+  analyzeAndLockAIPlan();
+
+  state.spawned = 0;
+  state.spawnTimer = 0;
+
+  state.waveActive = false;
+  state.waitingForNextWave = true;
+
+  resetRelocationsForPreparation();
+
+  if (!completedWaveWasBoss) {
+    state.enemiesPerWave += 1;
+  }
+
+  addEventLog(
+    `Preparation phase. ${state.relocationTokens} tower relocations available.`
+  );
+
+  addEventLog(getAIPlanText());
+}
+
+function updateStageProgression(scene) {
+  if (state.wave === 5 || state.wave === 9 || state.wave === 13) {
+    const stage = nextStage();
+    const refund = refundAndClearTowersForStageChange(scene);
+    const effectText = getStageEffectText();
+
+    state.stageVersion++;
+
+    showAnnouncement(
+      `NEW BATTLEFIELD: ${stage.name} | ${effectText} • Towers refunded +${refund}G`
+    );
+
+    addEventLog(
+      `Stage changed to ${stage.name}. Effect: ${effectText}. Towers refunded: +${refund}G.`
+    );
+  }
+}
+
+function selectPathForWave() {
+  const activePaths = getActivePaths();
+  const randomIndex = Math.floor(Math.random() * activePaths.length);
+
+  state.currentPath = activePaths[randomIndex];
+}
+
+function maybeApplyPathFeint() {
+  const isBossWave = state.wave % 5 === 0;
+  const earlyWave = state.wave <= 2;
+
+  if (isBossWave || earlyWave) return false;
+
+  const feintChance = state.aiMemory.successScore < -1 ? 0.35 : 0.25;
+
+  if (Math.random() > feintChance) return false;
+
+  const activePaths = getActivePaths();
+
+  if (activePaths.length <= 1) return false;
+
+  const possiblePaths = activePaths.filter((path) => path !== state.currentPath);
+  const randomIndex = Math.floor(Math.random() * possiblePaths.length);
+
+  state.currentPath = possiblePaths[randomIndex];
+
+  return true;
+}

@@ -1,6 +1,6 @@
-import { state } from "./state.js";
-import { updateTowerLabelText, removeTowerLabel } from "./towerLabels.js";
-import { addEventLog } from "./eventLog.js";
+import { state } from "../game/state.js";
+import { updateTowerLabelText, removeTowerLabel } from "../visuals/towerLabels.js";
+import { addEventLog } from "../ui/eventLog.js";
 
 export function getUpgradeCost(tower) {
   if (!tower) return null;
@@ -51,11 +51,13 @@ export function upgradeSelectedTower() {
   tower.userData.range += 0.4;
   tower.userData.fireRate = Math.max(10, tower.userData.fireRate - 6);
 
+  boostUltimateOnUpgrade(tower);
+
   tower.scale.multiplyScalar(1.15);
   updateTowerLabelText(tower);
 
   addEventLog(
-    `${formatTowerType(tower.userData.type)} upgraded to level ${tower.userData.level}.`
+    `${formatTowerType(tower.userData.type)} upgraded to level ${tower.userData.level}. Ultimate charge boosted.`
   );
 }
 
@@ -75,6 +77,7 @@ export function sellTower(scene, tower) {
 
   removeTowerLabel(scene, tower);
   scene.remove(tower);
+  disposeTower(tower);
 
   if (state.selectedObject === tower) {
     state.selectedObject = null;
@@ -84,6 +87,41 @@ export function sellTower(scene, tower) {
   state.gold += refund;
 
   addEventLog(`${formatTowerType(tower.userData.type)} sold. +${refund} gold.`);
+}
+
+function boostUltimateOnUpgrade(tower) {
+  const currentCharge = tower.userData.ultimateCharge ?? 0;
+  const bonus = tower.userData.level >= 3 ? 35 : 20;
+
+  tower.userData.ultimateCharge = Math.min(100, currentCharge + bonus);
+
+  if (tower.userData.ultimateCooldown > 0) {
+    tower.userData.ultimateCooldown = Math.max(
+      0,
+      tower.userData.ultimateCooldown - 90
+    );
+  }
+}
+
+function disposeTower(tower) {
+  tower.traverse?.((child) => {
+    if (!child.isMesh && !child.isSprite) return;
+
+    child.geometry?.dispose?.();
+
+    if (Array.isArray(child.material)) {
+      child.material.forEach(disposeMaterial);
+    } else {
+      disposeMaterial(child.material);
+    }
+  });
+}
+
+function disposeMaterial(material) {
+  if (!material) return;
+
+  material.map?.dispose?.();
+  material.dispose?.();
 }
 
 function formatTowerType(type) {

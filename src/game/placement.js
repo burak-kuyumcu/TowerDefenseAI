@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state } from "../game/state.js";
 import { getActivePathSet } from "../core/constants.js";
 
 export function getTowerCost(type = state.selectedTowerType) {

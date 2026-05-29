@@ -10,21 +10,22 @@
   <body>
     <canvas id="app"></canvas>
 
-  <div id="hud">
-    <div>Score: <span id="score">0</span></div>
-    <div>Wave: <span id="wave">1</span></div>
-    <div>Stage: <span id="stageName">Forest Route</span></div>
-    <div>Gold: <span id="gold">100</span></div>
-    <div>Base HP: <span id="baseHp">10</span></div>
-    <div>Selected Tower: <span id="selectedTower">Normal</span></div>
-    <div>AI Strategy: <span id="aiStrategy">Balanced</span></div>
-    <div>Shader Mode: <span id="shaderMode">Standard</span></div>
-    <div id="gameState">Running</div>
-    <div>Audio: <span id="audioStatus">On</span></div>
-    <div>Combo: <span id="combo">-</span></div>
-    <div>Relocations: <span id="relocations">2</span></div>
-    <div>Stage Effect: <span id="stageEffect">Balanced Terrain</span></div>
-  </div>
+    <div id="hud">
+      <div>Score: <span id="score">0</span></div>
+      <div>Wave: <span id="wave">1</span></div>
+      <div>Stage: <span id="stageName">Forest Route</span></div>
+      <div>Gold: <span id="gold">100</span></div>
+      <div>Base HP: <span id="baseHp">10</span></div>
+      <div>Selected Tower: <span id="selectedTower">Normal</span></div>
+      <div>Ultimate: <span id="ultimateStatus">-</span></div>
+      <div>AI Strategy: <span id="aiStrategy">Balanced</span></div>
+      <div>Shader Mode: <span id="shaderMode">Standard</span></div>
+      <div id="gameState">Running</div>
+      <div>Audio: <span id="audioStatus">On</span></div>
+      <div>Combo: <span id="combo">-</span></div>
+      <div>Relocations: <span id="relocations">2</span></div>
+      <div>Stage Effect: <span id="stageEffect">Balanced Terrain</span></div>
+    </div>
 
     <div id="help">
       <div><b>Controls</b></div>
@@ -47,8 +48,18 @@
       <div>Right Click Tower: Sell tower</div>
       <div>T: Place tower</div>
       <div>U: Upgrade selected tower</div>
+      <div>F: Use selected tower ultimate</div>
       <div>G: Change selected tower target mode</div>
       <div>Esc: Deselect object</div>
+
+      <br />
+
+      <div><b>Tower Ultimates</b></div>
+      <div>Normal: Focus Burst</div>
+      <div>Rapid: Overdrive</div>
+      <div>Sniper: Piercing Shot</div>
+      <div>Slow: Freeze Field</div>
+      <div>Splash: Meteor Blast</div>
 
       <br />
 
@@ -119,6 +130,7 @@
     <div id="actionPanel">
       <div><b>Actions</b></div>
       <button id="upgradeButton">Upgrade Tower</button>
+      <button id="ultimateButton">Use Ultimate</button>
       <button id="sellButton">Sell Tower</button>
     </div>
 

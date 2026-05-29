@@ -1,0 +1,65 @@
+import { state } from "../game/state.js";
+import { getAIStrategyName, getAIPlanText } from "../ai/aiDirector.js";
+import { getCurrentStage } from "../game/stages.js";
+import { getStageEffectText } from "../ai/stageInfo.js";
+
+export function updateAIFeedback() {
+  const content = document.querySelector("#aiFeedbackContent");
+  if (!content) return;
+
+  if (!state.started) {
+    content.innerHTML = "Start the game to activate enemy AI.";
+    return;
+  }
+
+  const strategy = getAIStrategyName();
+  const stage = getCurrentStage();
+
+  content.innerHTML = `
+    Stage: ${stage.name}<br>
+    Modifier: ${getStageEffectText()}<br>
+    ${getAIPlanText()}<br>
+    ${getBluffText()}<br>
+    Locked Strategy: ${strategy}<br>
+    Status: ${state.waveActive ? "Executing plan" : "Planning complete"}<br>
+    Suggestion: ${getSuggestionText(strategy)}
+  `;
+}
+
+function getBluffText() {
+  if (!state.aiBluffActive) return "Bluff: none";
+
+  return `Bluff: ${state.aiBluffFrom} → ${state.aiBluffTo}`;
+}
+
+function getSuggestionText(strategy) {
+  if (strategy === "Swarm Pressure" || strategy === "Swarm Boss") {
+    return "Use rapid or splash towers near the active path.";
+  }
+
+  if (strategy === "Heavy Push" || strategy === "Shielded Push") {
+    return "Add sniper towers and target strongest enemies.";
+  }
+
+  if (strategy === "Armored Response" || strategy === "Armored Boss") {
+    return "Use sniper support and spread towers across corners.";
+  }
+
+  if (strategy === "Tank Response" || strategy === "Crusher Boss") {
+    return "Upgrade damage and focus strongest targets.";
+  }
+
+  if (strategy === "Fast Pressure") {
+    return "Relocate slow towers near path corners.";
+  }
+
+  if (strategy === "Adaptive Mix" || strategy === "Disruption Boss") {
+    return "Balance damage, slow, and splash coverage.";
+  }
+
+  if (strategy === "Boss Wave") {
+    return "Relocate high damage towers near the boss path.";
+  }
+
+  return "Prepare a balanced defense.";
+}

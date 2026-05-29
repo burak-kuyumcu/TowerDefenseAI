@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { getCurrentStage } from "./stages.js";
-import { createGameMaterial } from "./materials.js";
+import { getCurrentStage } from "../game/stages.js";
+import { createGameMaterial } from "../visuals/materials.js";
 
 let stagePathMeshes = [];
 

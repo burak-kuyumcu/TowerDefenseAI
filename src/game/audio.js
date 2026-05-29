@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state } from "../game/state.js";
 
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 let audioContext = null;
