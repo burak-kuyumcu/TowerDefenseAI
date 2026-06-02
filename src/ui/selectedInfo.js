@@ -1,6 +1,7 @@
 import { state } from "../game/state.js";
 import { getUpgradeCost, getSellRefund } from "../game/upgrade.js";
 import { canRelocateNow } from "../systems/relocation.js";
+import { getDirectionalFocusText } from "../systems/directionalFocus.js";
 
 export function updateSelectedInfo() {
   const content = document.querySelector("#selectedInfoContent");
@@ -20,14 +21,13 @@ export function updateSelectedInfo() {
     const targetMode = formatTargetMode(selected.userData.targetMode ?? "nearest");
     const critChance = Math.round((selected.userData.critChance ?? 0) * 100);
 
-    const ultimateName = selected.userData.ultimateName ?? getUltimateName(selected.userData.type);
+    const ultimateName =
+      selected.userData.ultimateName ?? getUltimateName(selected.userData.type);
+
     const ultimateCharge = Math.floor(selected.userData.ultimateCharge ?? 0);
     const ultimateStatus = getUltimateStatus(selected);
 
-    const relocationText = canRelocateNow()
-      ? `Relocation: Available (${state.relocationTokens})<br>
-         Move: Arrow Keys`
-      : "Relocation: Only between waves";
+    const relocationText = getRelocationText(selected);
 
     const upgradeInfo =
       level >= 3
@@ -51,12 +51,17 @@ export function updateSelectedInfo() {
       Status: ${selected.userData.slowTimer > 0 ? "Slowed" : "Normal"}<br>
       Sell Refund: ${refund} Gold<br>
       <hr>
+      <b>Directional Focus</b><br>
+      ${getDirectionalFocusText(selected)}<br>
+      Rotate: Q / E<br>
+      <hr>
+      <b>Translation</b><br>
+      ${relocationText}<br>
+      <hr>
       Ultimate: ${ultimateName}<br>
       Charge: ${ultimateCharge}%<br>
       Ultimate Status: ${ultimateStatus}<br>
       Key: F<br>
-      <hr>
-      ${relocationText}
       <hr>
       ${upgradeInfo}
     `;
@@ -75,6 +80,29 @@ export function updateSelectedInfo() {
   }
 
   content.innerHTML = "Unknown";
+}
+
+function getRelocationText(tower) {
+  if (tower.userData.relocationTween?.active) {
+    return "Translate Status: Moving";
+  }
+
+  const lastFrom = tower.userData.lastRelocationFrom;
+  const lastTo = tower.userData.lastRelocationTo;
+
+  const lastMove =
+    lastFrom && lastTo
+      ? `<br>Last Translate: ${lastFrom} → ${lastTo}`
+      : "";
+
+  if (canRelocateNow()) {
+    return `
+      Translate: Available (${state.relocationTokens})<br>
+      Move: Arrow Keys${lastMove}
+    `;
+  }
+
+  return `Translate: Only between waves${lastMove}`;
 }
 
 function getUltimateStatus(tower) {

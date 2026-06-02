@@ -7,23 +7,46 @@ import { damageBase } from "../systems/base.js";
 import {
   spawnEliteAura,
   spawnBossAura,
-  spawnFootstepDust
+  spawnFootstepDust,
+  spawnPortalSpawnEffect,
+  spawnProjectileTrailEffect
 } from "../visuals/effects.js";
 import { showAnnouncement } from "../ui/announcer.js";
 import { addEventLog } from "../ui/eventLog.js";
-import { getCurrentStage } from "../game/stages.js";
+import {
+  getCurrentStage,
+  getCurrentStageEffect,
+  getCurrentStageEnemySpeedMultiplier,
+  getCurrentStageEnemyHealthMultiplier,
+  getCurrentStageGoldMultiplier,
+  getCurrentStageSlowBonus
+} from "../game/stages.js";
+import { addCameraShake } from "../systems/cameraShake.js";
 
 export function spawnEnemy(scene) {
   const enemyType = chooseEnemyType();
   const stage = getCurrentStage();
+  const stageEffect = getCurrentStageEffect();
 
   const config = {
     ...getEnemyConfig(enemyType)
   };
 
-  config.speed *= stage.enemySpeedMultiplier ?? 1;
-  config.health = Math.floor(
-    config.health * (stage.enemyHealthMultiplier ?? 1)
+  const speedMultiplier = getCurrentStageEnemySpeedMultiplier();
+  const healthMultiplier = getCurrentStageEnemyHealthMultiplier();
+  const goldMultiplier = getCurrentStageGoldMultiplier();
+  const slowBonus = getCurrentStageSlowBonus();
+
+  config.speed *= speedMultiplier;
+
+  config.health = Math.max(
+    1,
+    Math.floor(config.health * healthMultiplier)
+  );
+
+  config.gold = Math.max(
+    1,
+    Math.floor((config.gold ?? 5) * goldMultiplier)
   );
 
   const enemy = createEnemyModel(config);
@@ -35,6 +58,8 @@ export function spawnEnemy(scene) {
   const isBoss = config.type.startsWith("boss");
 
   enemy.userData = {
+    ...enemy.userData,
+
     type: config.type,
     index: 0,
     speed: config.speed,
@@ -45,7 +70,10 @@ export function spawnEnemy(scene) {
     maxHealth: config.health,
 
     stageId: stage.id,
-    stageSlowBonus: stage.slowBonus ?? 1,
+    stageName: stage.name,
+    stageEffectId: stageEffect.id,
+    stageEffectLabel: stageEffect.label,
+    stageSlowBonus: slowBonus,
 
     score: config.score,
     gold: config.gold,
@@ -76,11 +104,20 @@ export function spawnEnemy(scene) {
 
     walkPhase: Math.random() * Math.PI * 2,
     stepTimer: Math.floor(Math.random() * 20),
+    trailTimer: Math.floor(Math.random() * 10),
+    specialAnimTimer: Math.floor(Math.random() * 60),
+
     previousX: startPoint.x,
     previousZ: startPoint.z
   };
 
   scene.add(enemy);
+
+  spawnPortalSpawnEffect(
+    scene,
+    enemy.position,
+    isBoss ? getBossAuraColor(config.type) : 0xfb923c
+  );
 
   const healthBar = createHealthBar(enemy);
   scene.add(healthBar);
@@ -93,9 +130,12 @@ export function spawnEnemy(scene) {
 
   if (config.type.startsWith("boss")) {
     const bossName = formatBossType(config.type);
+
     spawnBossAura(scene, enemy, getBossAuraColor(config.type));
     showAnnouncement(`⚠ BOSS DEPLOYED: ${bossName}`);
     addEventLog(`${bossName} spawned.`);
+
+    addCameraShake(0.28, 32);
   }
 
   state.enemies.push(enemy);
@@ -119,17 +159,40 @@ function createEnemyModel(config) {
 function createNormalEnemy(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.BoxGeometry(0.55, 0.45, 0.55), config.color);
-  body.position.y = 0.32;
+  const body = mesh(new THREE.BoxGeometry(0.52, 0.46, 0.48), config.color);
+  body.position.y = 0.34;
 
-  const head = mesh(new THREE.BoxGeometry(0.38, 0.32, 0.38), 0xef4444);
+  const belly = mesh(new THREE.BoxGeometry(0.34, 0.24, 0.12), 0x991b1b);
+  belly.position.set(0, 0.34, 0.27);
+
+  const head = mesh(new THREE.BoxGeometry(0.38, 0.32, 0.34), 0xef4444);
   head.position.y = 0.72;
+  head.position.z = 0.04;
+
+  const jaw = mesh(new THREE.BoxGeometry(0.26, 0.08, 0.12), 0x7f1d1d);
+  jaw.position.set(0, 0.58, 0.23);
 
   const eyeLeft = mesh(new THREE.SphereGeometry(0.045, 8, 8), 0xffffff, true);
-  eyeLeft.position.set(-0.11, 0.72, 0.2);
+  eyeLeft.position.set(-0.11, 0.74, 0.22);
 
   const eyeRight = mesh(new THREE.SphereGeometry(0.045, 8, 8), 0xffffff, true);
-  eyeRight.position.set(0.11, 0.72, 0.2);
+  eyeRight.position.set(0.11, 0.74, 0.22);
+
+  const browLeft = mesh(new THREE.BoxGeometry(0.14, 0.035, 0.045), 0x450a0a);
+  browLeft.position.set(-0.11, 0.82, 0.23);
+  browLeft.rotation.z = 0.22;
+
+  const browRight = mesh(new THREE.BoxGeometry(0.14, 0.035, 0.045), 0x450a0a);
+  browRight.position.set(0.11, 0.82, 0.23);
+  browRight.rotation.z = -0.22;
+
+  const hornLeft = mesh(new THREE.ConeGeometry(0.045, 0.18, 6), 0xfca5a5, true);
+  hornLeft.position.set(-0.18, 0.93, 0.02);
+  hornLeft.rotation.z = Math.PI;
+
+  const hornRight = mesh(new THREE.ConeGeometry(0.045, 0.18, 6), 0xfca5a5, true);
+  hornRight.position.set(0.18, 0.93, 0.02);
+  hornRight.rotation.z = Math.PI;
 
   const footLeft = mesh(new THREE.BoxGeometry(0.18, 0.08, 0.26), 0x7f1d1d);
   footLeft.position.set(-0.17, 0.06, 0.08);
@@ -137,16 +200,46 @@ function createNormalEnemy(config) {
   const footRight = mesh(new THREE.BoxGeometry(0.18, 0.08, 0.26), 0x7f1d1d);
   footRight.position.set(0.17, 0.06, 0.08);
 
-  group.add(body, head, eyeLeft, eyeRight, footLeft, footRight);
+  const armLeft = mesh(new THREE.BoxGeometry(0.09, 0.25, 0.1), 0x991b1b);
+  armLeft.position.set(-0.36, 0.34, 0.02);
+  armLeft.rotation.z = 0.25;
+
+  const armRight = mesh(new THREE.BoxGeometry(0.09, 0.25, 0.1), 0x991b1b);
+  armRight.position.set(0.36, 0.34, 0.02);
+  armRight.rotation.z = -0.25;
+
+  group.add(
+    body,
+    belly,
+    head,
+    jaw,
+    eyeLeft,
+    eyeRight,
+    browLeft,
+    browRight,
+    hornLeft,
+    hornRight,
+    footLeft,
+    footRight,
+    armLeft,
+    armRight
+  );
+
   group.userData.core = head;
   group.userData.body = body;
+  group.userData.head = head;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
+  group.userData.leftArm = armLeft;
+  group.userData.rightArm = armRight;
 
   markBaseTransform(body);
   markBaseTransform(head);
+  markBaseTransform(jaw);
   markBaseTransform(footLeft);
   markBaseTransform(footRight);
+  markBaseTransform(armLeft);
+  markBaseTransform(armRight);
 
   return group;
 }
@@ -154,39 +247,78 @@ function createNormalEnemy(config) {
 function createFastEnemy(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.ConeGeometry(0.28, 0.85, 16), config.color);
+  const body = mesh(new THREE.CapsuleGeometry(0.22, 0.45, 6, 12), config.color, true);
   body.position.y = 0.48;
-  body.rotation.x = Math.PI;
+  body.scale.z = 1.4;
+  body.rotation.x = Math.PI / 2;
 
-  const core = mesh(new THREE.SphereGeometry(0.2, 14, 14), 0xfacc15, true);
-  core.position.y = 0.58;
+  const nose = mesh(new THREE.ConeGeometry(0.18, 0.34, 14), 0xfacc15, true);
+  nose.position.set(0, 0.48, 0.48);
+  nose.rotation.x = Math.PI / 2;
 
-  const trail = mesh(new THREE.ConeGeometry(0.2, 0.45, 12), 0xfb923c, true);
-  trail.position.set(0, 0.25, -0.35);
-  trail.rotation.x = -Math.PI / 2;
+  const core = mesh(new THREE.SphereGeometry(0.15, 14, 14), 0xffedd5, true);
+  core.position.set(0, 0.52, 0.12);
 
-  const sideFinLeft = mesh(new THREE.BoxGeometry(0.08, 0.2, 0.35), 0xffedd5);
-  sideFinLeft.position.set(-0.24, 0.42, -0.05);
+  const engine = mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.22, 14), 0x7c2d12);
+  engine.position.set(0, 0.48, -0.48);
+  engine.rotation.x = Math.PI / 2;
 
-  const sideFinRight = sideFinLeft.clone();
-  sideFinRight.position.x = 0.24;
+  const flame = mesh(new THREE.ConeGeometry(0.14, 0.42, 12), 0xfb923c, true);
+  flame.position.set(0, 0.48, -0.72);
+  flame.rotation.x = -Math.PI / 2;
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.13, 0.06, 0.22), 0x7c2d12);
-  footLeft.position.set(-0.16, 0.05, 0.08);
+  const wingLeft = mesh(new THREE.BoxGeometry(0.08, 0.16, 0.5), 0xffedd5);
+  wingLeft.position.set(-0.28, 0.5, -0.05);
+  wingLeft.rotation.z = 0.18;
 
-  const footRight = mesh(new THREE.BoxGeometry(0.13, 0.06, 0.22), 0x7c2d12);
-  footRight.position.set(0.16, 0.05, 0.08);
+  const wingRight = mesh(new THREE.BoxGeometry(0.08, 0.16, 0.5), 0xffedd5);
+  wingRight.position.set(0.28, 0.5, -0.05);
+  wingRight.rotation.z = -0.18;
 
-  group.add(body, core, trail, sideFinLeft, sideFinRight, footLeft, footRight);
+  const footLeft = mesh(new THREE.BoxGeometry(0.12, 0.06, 0.24), 0x7c2d12);
+  footLeft.position.set(-0.15, 0.05, 0.08);
+
+  const footRight = mesh(new THREE.BoxGeometry(0.12, 0.06, 0.24), 0x7c2d12);
+  footRight.position.set(0.15, 0.05, 0.08);
+
+  const antennaLeft = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), 0xfef3c7, true);
+  antennaLeft.position.set(-0.1, 0.72, 0.24);
+  antennaLeft.rotation.z = -0.35;
+
+  const antennaRight = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), 0xfef3c7, true);
+  antennaRight.position.set(0.1, 0.72, 0.24);
+  antennaRight.rotation.z = 0.35;
+
+  group.add(
+    body,
+    nose,
+    core,
+    engine,
+    flame,
+    wingLeft,
+    wingRight,
+    footLeft,
+    footRight,
+    antennaLeft,
+    antennaRight
+  );
+
   group.userData.core = core;
   group.userData.body = body;
-  group.userData.extraSpin = trail;
+  group.userData.engine = engine;
+  group.userData.flame = flame;
+  group.userData.leftWing = wingLeft;
+  group.userData.rightWing = wingRight;
+  group.userData.extraSpin = flame;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
   markBaseTransform(body);
   markBaseTransform(core);
-  markBaseTransform(trail);
+  markBaseTransform(engine);
+  markBaseTransform(flame);
+  markBaseTransform(wingLeft);
+  markBaseTransform(wingRight);
   markBaseTransform(footLeft);
   markBaseTransform(footRight);
 
@@ -196,69 +328,111 @@ function createFastEnemy(config) {
 function createTankEnemy(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.BoxGeometry(0.85, 0.55, 0.75), config.color);
-  body.position.y = 0.38;
+  const body = mesh(new THREE.BoxGeometry(0.9, 0.5, 0.78), config.color);
+  body.position.y = 0.42;
 
-  const armor = mesh(new THREE.BoxGeometry(0.95, 0.22, 0.85), 0x450a0a);
-  armor.position.y = 0.75;
+  const shell = mesh(new THREE.BoxGeometry(1.0, 0.24, 0.86), 0x450a0a);
+  shell.position.y = 0.76;
+
+  const turret = mesh(new THREE.BoxGeometry(0.46, 0.24, 0.42), 0x991b1b);
+  turret.position.y = 1.0;
+
+  const cannon = mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.56, 10), 0x111827);
+  cannon.rotation.x = Math.PI / 2;
+  cannon.position.set(0, 1.0, 0.45);
 
   const frontPlate = mesh(new THREE.BoxGeometry(0.72, 0.35, 0.08), 0x991b1b);
-  frontPlate.position.set(0, 0.41, 0.42);
+  frontPlate.position.set(0, 0.43, 0.43);
 
   const core = mesh(new THREE.BoxGeometry(0.22, 0.22, 0.08), 0xfca5a5, true);
-  core.position.set(0, 0.45, 0.48);
+  core.position.set(0, 0.46, 0.49);
 
-  const treadLeft = mesh(new THREE.BoxGeometry(0.16, 0.16, 0.82), 0x111827);
-  treadLeft.position.set(-0.52, 0.18, 0);
+  const treadLeft = createTankTread(-0.55);
+  const treadRight = createTankTread(0.55);
 
-  const treadRight = mesh(new THREE.BoxGeometry(0.16, 0.16, 0.82), 0x111827);
-  treadRight.position.set(0.52, 0.18, 0);
+  const rearExhaustLeft = mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.32, 8), 0x111827);
+  rearExhaustLeft.position.set(-0.23, 0.64, -0.5);
+  rearExhaustLeft.rotation.x = Math.PI / 2;
 
-  group.add(body, armor, frontPlate, core, treadLeft, treadRight);
+  const rearExhaustRight = mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.32, 8), 0x111827);
+  rearExhaustRight.position.set(0.23, 0.64, -0.5);
+  rearExhaustRight.rotation.x = Math.PI / 2;
+
+  group.add(
+    body,
+    shell,
+    turret,
+    cannon,
+    frontPlate,
+    core,
+    treadLeft,
+    treadRight,
+    rearExhaustLeft,
+    rearExhaustRight
+  );
+
   group.userData.core = core;
   group.userData.body = body;
+  group.userData.head = turret;
   group.userData.extraSpin = core;
   group.userData.leftFoot = treadLeft;
   group.userData.rightFoot = treadRight;
+  group.userData.leftTread = treadLeft;
+  group.userData.rightTread = treadRight;
 
   markBaseTransform(body);
-  markBaseTransform(armor);
+  markBaseTransform(shell);
+  markBaseTransform(turret);
+  markBaseTransform(cannon);
   markBaseTransform(frontPlate);
   markBaseTransform(core);
   markBaseTransform(treadLeft);
   markBaseTransform(treadRight);
+  markBaseTransform(rearExhaustLeft);
+  markBaseTransform(rearExhaustRight);
 
   return group;
 }
-
 function createEliteEnemy(config) {
   const group = new THREE.Group();
 
-  const body = mesh(
-    new THREE.CylinderGeometry(0.38, 0.45, 0.8, 6),
+  const robe = mesh(
+    new THREE.CylinderGeometry(0.34, 0.48, 0.72, 6),
     config.color,
     true
   );
-  body.position.y = 0.48;
+  robe.position.y = 0.44;
 
-  const crown = mesh(
-    new THREE.TorusGeometry(0.34, 0.045, 10, 28),
-    0xf9a8d4,
-    true
-  );
-  crown.position.y = 0.95;
-  crown.rotation.x = Math.PI / 2;
+  const chest = mesh(new THREE.BoxGeometry(0.46, 0.34, 0.22), 0xbe185d, true);
+  chest.position.set(0, 0.58, 0.22);
 
-  const core = mesh(new THREE.OctahedronGeometry(0.24), 0xf472b6, true);
-  core.position.y = 0.5;
+  const head = mesh(new THREE.OctahedronGeometry(0.26), 0xf9a8d4, true);
+  head.position.y = 0.98;
 
-  const shoulderRing = mesh(
-    new THREE.TorusGeometry(0.48, 0.035, 8, 28),
-    0xec4899,
-    true
-  );
-  shoulderRing.position.y = 0.65;
-  shoulderRing.rotation.x = Math.PI / 2;
+  const core = mesh(new THREE.OctahedronGeometry(0.17), 0xf472b6, true);
+  core.position.set(0, 0.58, 0.36);
+
+  const shoulderLeft = mesh(new THREE.ConeGeometry(0.15, 0.3, 6), 0xf9a8d4, true);
+  shoulderLeft.position.set(-0.36, 0.72, 0);
+  shoulderLeft.rotation.z = Math.PI / 2;
+
+  const shoulderRight = mesh(new THREE.ConeGeometry(0.15, 0.3, 6), 0xf9a8d4, true);
+  shoulderRight.position.set(0.36, 0.72, 0);
+  shoulderRight.rotation.z = -Math.PI / 2;
+
+  const staff = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 8), 0xf9a8d4, true);
+  staff.position.set(0.48, 0.72, 0.02);
+
+  const staffOrb = mesh(new THREE.SphereGeometry(0.09, 12, 12), 0xfbcfe8, true);
+  staffOrb.position.set(0.48, 1.22, 0.02);
+
+  const backShard1 = mesh(new THREE.ConeGeometry(0.07, 0.42, 6), 0xf9a8d4, true);
+  backShard1.position.set(-0.16, 0.92, -0.24);
+  backShard1.rotation.z = Math.PI;
+
+  const backShard2 = mesh(new THREE.ConeGeometry(0.07, 0.42, 6), 0xf9a8d4, true);
+  backShard2.position.set(0.16, 0.92, -0.24);
+  backShard2.rotation.z = Math.PI;
 
   const footLeft = mesh(new THREE.BoxGeometry(0.15, 0.07, 0.26), 0x831843);
   footLeft.position.set(-0.2, 0.06, 0.04);
@@ -266,18 +440,41 @@ function createEliteEnemy(config) {
   const footRight = mesh(new THREE.BoxGeometry(0.15, 0.07, 0.26), 0x831843);
   footRight.position.set(0.2, 0.06, 0.04);
 
-  group.add(body, crown, core, shoulderRing, footLeft, footRight);
+  group.add(
+    robe,
+    chest,
+    head,
+    core,
+    shoulderLeft,
+    shoulderRight,
+    staff,
+    staffOrb,
+    backShard1,
+    backShard2,
+    footLeft,
+    footRight
+  );
+
   group.userData.core = core;
-  group.userData.body = body;
-  group.userData.extraSpin = shoulderRing;
-  group.userData.secondarySpin = crown;
+  group.userData.body = robe;
+  group.userData.head = head;
+  group.userData.secondarySpin = staffOrb;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
+  group.userData.leftArm = shoulderLeft;
+  group.userData.rightArm = shoulderRight;
+  group.userData.floatingParts = [backShard1, backShard2, staffOrb];
 
-  markBaseTransform(body);
-  markBaseTransform(crown);
+  markBaseTransform(robe);
+  markBaseTransform(chest);
+  markBaseTransform(head);
   markBaseTransform(core);
-  markBaseTransform(shoulderRing);
+  markBaseTransform(shoulderLeft);
+  markBaseTransform(shoulderRight);
+  markBaseTransform(staff);
+  markBaseTransform(staffOrb);
+  markBaseTransform(backShard1);
+  markBaseTransform(backShard2);
   markBaseTransform(footLeft);
   markBaseTransform(footRight);
 
@@ -287,19 +484,42 @@ function createEliteEnemy(config) {
 function createPurpleBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.BoxGeometry(0.9, 1.05, 0.9), config.color, true);
-  body.position.y = 0.7;
+  const body = mesh(new THREE.BoxGeometry(0.92, 1.02, 0.82), config.color, true);
+  body.position.y = 0.72;
 
-  const crown = mesh(
-    new THREE.TorusGeometry(0.58, 0.06, 12, 36),
-    0xc084fc,
-    true
-  );
-  crown.position.y = 1.35;
-  crown.rotation.x = Math.PI / 2;
+  const chestCore = mesh(new THREE.OctahedronGeometry(0.28), 0xfacc15, true);
+  chestCore.position.set(0, 0.72, 0.46);
 
-  const core = mesh(new THREE.OctahedronGeometry(0.34), 0xfacc15, true);
-  core.position.y = 0.76;
+  const head = mesh(new THREE.BoxGeometry(0.55, 0.36, 0.5), 0x7e22ce, true);
+  head.position.y = 1.36;
+  head.position.z = 0.02;
+
+  const crownBase = mesh(new THREE.BoxGeometry(0.72, 0.08, 0.22), 0xc084fc, true);
+  crownBase.position.y = 1.6;
+
+  const crownShard1 = mesh(new THREE.ConeGeometry(0.07, 0.32, 6), 0xe9d5ff, true);
+  crownShard1.position.set(-0.24, 1.78, 0);
+  crownShard1.rotation.z = Math.PI;
+
+  const crownShard2 = mesh(new THREE.ConeGeometry(0.09, 0.42, 6), 0xe9d5ff, true);
+  crownShard2.position.set(0, 1.84, 0);
+  crownShard2.rotation.z = Math.PI;
+
+  const crownShard3 = mesh(new THREE.ConeGeometry(0.07, 0.32, 6), 0xe9d5ff, true);
+  crownShard3.position.set(0.24, 1.78, 0);
+  crownShard3.rotation.z = Math.PI;
+
+  const shoulderLeft = mesh(new THREE.BoxGeometry(0.3, 0.28, 0.42), 0x4c1d95);
+  shoulderLeft.position.set(-0.62, 1.02, 0);
+
+  const shoulderRight = mesh(new THREE.BoxGeometry(0.3, 0.28, 0.42), 0x4c1d95);
+  shoulderRight.position.set(0.62, 1.02, 0);
+
+  const handLeft = mesh(new THREE.SphereGeometry(0.16, 12, 12), 0xc084fc, true);
+  handLeft.position.set(-0.72, 0.55, 0.2);
+
+  const handRight = mesh(new THREE.SphereGeometry(0.16, 12, 12), 0xc084fc, true);
+  handRight.position.set(0.72, 0.55, 0.2);
 
   const footLeft = mesh(new THREE.BoxGeometry(0.28, 0.1, 0.38), 0x4c1d95);
   footLeft.position.set(-0.28, 0.07, 0.1);
@@ -307,18 +527,34 @@ function createPurpleBoss(config) {
   const footRight = mesh(new THREE.BoxGeometry(0.28, 0.1, 0.38), 0x4c1d95);
   footRight.position.set(0.28, 0.07, 0.1);
 
-  group.add(body, crown, core, footLeft, footRight);
-  group.userData.core = core;
+  group.add(
+    body,
+    chestCore,
+    head,
+    crownBase,
+    crownShard1,
+    crownShard2,
+    crownShard3,
+    shoulderLeft,
+    shoulderRight,
+    handLeft,
+    handRight,
+    footLeft,
+    footRight
+  );
+
+  group.userData.core = chestCore;
   group.userData.body = body;
-  group.userData.extraSpin = crown;
+  group.userData.head = head;
+  group.userData.leftArm = shoulderLeft;
+  group.userData.rightArm = shoulderRight;
+  group.userData.leftHand = handLeft;
+  group.userData.rightHand = handRight;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
+  group.userData.floatingParts = [crownShard1, crownShard2, crownShard3, handLeft, handRight];
 
-  markBaseTransform(body);
-  markBaseTransform(crown);
-  markBaseTransform(core);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
 }
@@ -326,41 +562,93 @@ function createPurpleBoss(config) {
 function createCrusherBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.CylinderGeometry(0.65, 0.8, 1.2, 18), config.color);
-  body.position.y = 0.78;
+  const body = mesh(
+    new THREE.CylinderGeometry(0.68, 0.84, 1.14, 18),
+    config.color
+  );
+  body.position.y = 0.76;
 
-  const armorTop = mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.22, 18), 0x450a0a);
-  armorTop.position.y = 1.43;
+  const bellyPlate = mesh(new THREE.BoxGeometry(0.76, 0.46, 0.12), 0x450a0a);
+  bellyPlate.position.set(0, 0.72, 0.58);
+
+  const head = mesh(new THREE.BoxGeometry(0.62, 0.36, 0.52), 0x991b1b);
+  head.position.set(0, 1.42, 0.08);
+
+  const jaw = mesh(new THREE.BoxGeometry(0.5, 0.12, 0.16), 0x450a0a);
+  jaw.position.set(0, 1.22, 0.34);
+
+  const shoulderLeft = mesh(new THREE.BoxGeometry(0.38, 0.34, 0.5), 0x450a0a);
+  shoulderLeft.position.set(-0.72, 1.04, 0);
+
+  const shoulderRight = mesh(new THREE.BoxGeometry(0.38, 0.34, 0.5), 0x450a0a);
+  shoulderRight.position.set(0.72, 1.04, 0);
+
+  const fistLeft = mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), 0x7f1d1d);
+  fistLeft.position.set(-0.86, 0.55, 0.26);
+
+  const fistRight = mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), 0x7f1d1d);
+  fistRight.position.set(0.86, 0.55, 0.26);
+
+  const armorTop = mesh(
+    new THREE.CylinderGeometry(0.72, 0.72, 0.18, 18),
+    0x450a0a
+  );
+  armorTop.position.y = 1.25;
 
   const spikes = new THREE.Group();
-  spikes.position.y = 1.58;
+  spikes.position.y = 1.55;
 
-  for (let i = 0; i < 6; i++) {
-    const spike = mesh(new THREE.ConeGeometry(0.09, 0.32, 8), 0xfca5a5, true);
-    const angle = (Math.PI * 2 * i) / 6;
-    spike.position.set(Math.cos(angle) * 0.48, 0, Math.sin(angle) * 0.48);
+  for (let i = 0; i < 7; i++) {
+    const spike = mesh(new THREE.ConeGeometry(0.08, 0.3, 8), 0xfca5a5, true);
+    const x = -0.42 + i * 0.14;
+
+    spike.position.set(x, 0, -0.18 - Math.abs(i - 3) * 0.02);
     spike.rotation.z = Math.PI;
+
     spikes.add(spike);
   }
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.3, 0.11, 0.42), 0x450a0a);
-  footLeft.position.set(-0.32, 0.07, 0.08);
+  const kneeLeft = mesh(new THREE.BoxGeometry(0.22, 0.18, 0.24), 0x991b1b);
+  kneeLeft.position.set(-0.35, 0.3, 0.34);
 
-  const footRight = mesh(new THREE.BoxGeometry(0.3, 0.11, 0.42), 0x450a0a);
-  footRight.position.set(0.32, 0.07, 0.08);
+  const kneeRight = mesh(new THREE.BoxGeometry(0.22, 0.18, 0.24), 0x991b1b);
+  kneeRight.position.set(0.35, 0.3, 0.34);
 
-  group.add(body, armorTop, spikes, footLeft, footRight);
+  const footLeft = mesh(new THREE.BoxGeometry(0.34, 0.12, 0.48), 0x450a0a);
+  footLeft.position.set(-0.34, 0.07, 0.1);
+
+  const footRight = mesh(new THREE.BoxGeometry(0.34, 0.12, 0.48), 0x450a0a);
+  footRight.position.set(0.34, 0.07, 0.1);
+
+  group.add(
+    body,
+    bellyPlate,
+    head,
+    jaw,
+    shoulderLeft,
+    shoulderRight,
+    fistLeft,
+    fistRight,
+    armorTop,
+    spikes,
+    kneeLeft,
+    kneeRight,
+    footLeft,
+    footRight
+  );
+
   group.userData.core = armorTop;
   group.userData.body = body;
+  group.userData.head = head;
   group.userData.extraSpin = spikes;
+  group.userData.leftArm = shoulderLeft;
+  group.userData.rightArm = shoulderRight;
+  group.userData.leftHand = fistLeft;
+  group.userData.rightHand = fistRight;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
-  markBaseTransform(body);
-  markBaseTransform(armorTop);
-  markBaseTransform(spikes);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
 }
@@ -368,36 +656,73 @@ function createCrusherBoss(config) {
 function createRunnerBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.SphereGeometry(0.55, 20, 20), config.color, true);
+  const body = mesh(new THREE.CapsuleGeometry(0.36, 0.75, 8, 18), config.color, true);
   body.position.y = 0.82;
-  body.scale.z = 1.35;
+  body.scale.z = 1.7;
+  body.rotation.x = Math.PI / 2;
 
-  const front = mesh(new THREE.ConeGeometry(0.32, 0.65, 16), 0xfacc15, true);
-  front.position.set(0, 0.82, 0.72);
-  front.rotation.x = Math.PI / 2;
+  const nose = mesh(new THREE.ConeGeometry(0.32, 0.72, 18), 0xfacc15, true);
+  nose.position.set(0, 0.82, 0.78);
+  nose.rotation.x = Math.PI / 2;
 
-  const trail = mesh(new THREE.TorusGeometry(0.62, 0.045, 10, 34), 0xfb923c, true);
-  trail.position.y = 0.82;
-  trail.rotation.x = Math.PI / 2;
+  const cockpit = mesh(new THREE.SphereGeometry(0.18, 14, 14), 0xffedd5, true);
+  cockpit.position.set(0, 1.05, 0.3);
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.2, 0.08, 0.32), 0x9a3412);
-  footLeft.position.set(-0.26, 0.06, 0.08);
+  const engineMain = mesh(new THREE.CylinderGeometry(0.24, 0.34, 0.35, 16), 0x9a3412);
+  engineMain.position.set(0, 0.82, -0.82);
+  engineMain.rotation.x = Math.PI / 2;
 
-  const footRight = mesh(new THREE.BoxGeometry(0.2, 0.08, 0.32), 0x9a3412);
-  footRight.position.set(0.26, 0.06, 0.08);
+  const engineLeft = mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.36, 12), 0x7c2d12);
+  engineLeft.position.set(-0.38, 0.72, -0.6);
+  engineLeft.rotation.x = Math.PI / 2;
 
-  group.add(body, front, trail, footLeft, footRight);
-  group.userData.core = trail;
+  const engineRight = mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.36, 12), 0x7c2d12);
+  engineRight.position.set(0.38, 0.72, -0.6);
+  engineRight.rotation.x = Math.PI / 2;
+
+  const wingLeft = mesh(new THREE.BoxGeometry(0.14, 0.18, 0.75), 0xffedd5);
+  wingLeft.position.set(-0.5, 0.8, -0.08);
+  wingLeft.rotation.z = 0.2;
+
+  const wingRight = mesh(new THREE.BoxGeometry(0.14, 0.18, 0.75), 0xffedd5);
+  wingRight.position.set(0.5, 0.8, -0.08);
+  wingRight.rotation.z = -0.2;
+
+  const flame = mesh(new THREE.ConeGeometry(0.25, 0.7, 16), 0xfb923c, true);
+  flame.position.set(0, 0.82, -1.12);
+  flame.rotation.x = -Math.PI / 2;
+
+  const footLeft = mesh(new THREE.BoxGeometry(0.22, 0.08, 0.34), 0x9a3412);
+  footLeft.position.set(-0.28, 0.06, 0.08);
+
+  const footRight = mesh(new THREE.BoxGeometry(0.22, 0.08, 0.34), 0x9a3412);
+  footRight.position.set(0.28, 0.06, 0.08);
+
+  group.add(
+    body,
+    nose,
+    cockpit,
+    engineMain,
+    engineLeft,
+    engineRight,
+    wingLeft,
+    wingRight,
+    flame,
+    footLeft,
+    footRight
+  );
+
+  group.userData.core = cockpit;
   group.userData.body = body;
-  group.userData.extraSpin = trail;
+  group.userData.engine = engineMain;
+  group.userData.flame = flame;
+  group.userData.extraSpin = flame;
+  group.userData.leftWing = wingLeft;
+  group.userData.rightWing = wingRight;
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
-  markBaseTransform(body);
-  markBaseTransform(front);
-  markBaseTransform(trail);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
 }
@@ -406,43 +731,69 @@ function createShieldBoss(config) {
   const group = new THREE.Group();
 
   const body = mesh(
-    new THREE.CylinderGeometry(0.55, 0.65, 1.1, 20),
+    new THREE.CylinderGeometry(0.54, 0.68, 1.04, 20),
     config.color,
     true
   );
-  body.position.y = 0.7;
+  body.position.y = 0.72;
 
-  const shield = mesh(new THREE.TorusGeometry(0.78, 0.06, 12, 40), 0x86efac, true);
-  shield.position.y = 0.8;
-  shield.rotation.x = Math.PI / 2;
+  const chestGem = mesh(new THREE.OctahedronGeometry(0.22), 0xbbf7d0, true);
+  chestGem.position.set(0, 0.78, 0.46);
 
-  const gem = mesh(new THREE.OctahedronGeometry(0.28), 0xbbf7d0, true);
-  gem.position.y = 1.3;
+  const head = mesh(new THREE.BoxGeometry(0.46, 0.32, 0.42), 0x16a34a, true);
+  head.position.set(0, 1.36, 0.04);
 
-  const shield2 = mesh(new THREE.TorusGeometry(0.5, 0.035, 10, 34), 0xdcfce7, true);
-  shield2.position.y = 0.8;
-  shield2.rotation.z = Math.PI / 2;
+  const shieldPanelFront = mesh(new THREE.BoxGeometry(0.9, 0.74, 0.08), 0x86efac, true);
+  shieldPanelFront.position.set(0, 0.78, 0.66);
+  shieldPanelFront.material.transparent = true;
+  shieldPanelFront.material.opacity = 0.55;
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.26, 0.09, 0.36), 0x14532d);
-  footLeft.position.set(-0.28, 0.06, 0.08);
+  const shieldPanelLeft = mesh(new THREE.BoxGeometry(0.08, 0.56, 0.58), 0xbbf7d0, true);
+  shieldPanelLeft.position.set(-0.62, 0.78, 0.12);
+  shieldPanelLeft.material.transparent = true;
+  shieldPanelLeft.material.opacity = 0.45;
 
-  const footRight = mesh(new THREE.BoxGeometry(0.26, 0.09, 0.36), 0x14532d);
-  footRight.position.set(0.28, 0.06, 0.08);
+  const shieldPanelRight = mesh(new THREE.BoxGeometry(0.08, 0.56, 0.58), 0xbbf7d0, true);
+  shieldPanelRight.position.set(0.62, 0.78, 0.12);
+  shieldPanelRight.material.transparent = true;
+  shieldPanelRight.material.opacity = 0.45;
 
-  group.add(body, shield, gem, shield2, footLeft, footRight);
-  group.userData.core = shield;
+    const generatorLeft = mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.34, 12), 0xdcfce7, true);
+  generatorLeft.position.set(-0.42, 1.13, -0.24);
+  generatorLeft.rotation.x = Math.PI / 2;
+
+  const generatorRight = mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.34, 12), 0xdcfce7, true);
+  generatorRight.position.set(0.42, 1.13, -0.24);
+  generatorRight.rotation.x = Math.PI / 2;
+
+  const footLeft = mesh(new THREE.BoxGeometry(0.28, 0.1, 0.38), 0x14532d);
+  footLeft.position.set(-0.3, 0.06, 0.08);
+
+  const footRight = mesh(new THREE.BoxGeometry(0.28, 0.1, 0.38), 0x14532d);
+  footRight.position.set(0.3, 0.06, 0.08);
+
+  group.add(
+    body,
+    chestGem,
+    head,
+    shieldPanelFront,
+    shieldPanelLeft,
+    shieldPanelRight,
+    generatorLeft,
+    generatorRight,
+    footLeft,
+    footRight
+  );
+
+  group.userData.core = chestGem;
   group.userData.body = body;
-  group.userData.extraSpin = shield2;
-  group.userData.secondarySpin = shield;
+  group.userData.head = head;
+  group.userData.secondarySpin = chestGem;
+  group.userData.shieldPanels = [shieldPanelFront, shieldPanelLeft, shieldPanelRight];
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
-  markBaseTransform(body);
-  markBaseTransform(shield);
-  markBaseTransform(gem);
-  markBaseTransform(shield2);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
 }
@@ -450,42 +801,54 @@ function createShieldBoss(config) {
 function createSplitterBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.SphereGeometry(0.62, 18, 18), config.color, true);
+  const body = mesh(new THREE.SphereGeometry(0.58, 18, 18), config.color, true);
   body.position.y = 0.78;
+  body.scale.set(1.05, 1, 0.95);
 
-  const small1 = mesh(new THREE.SphereGeometry(0.24, 12, 12), 0xfde047, true);
-  small1.position.set(-0.45, 0.88, 0.18);
+  const shellFront = mesh(new THREE.BoxGeometry(0.42, 0.28, 0.14), 0x713f12);
+  shellFront.position.set(0, 0.76, 0.54);
 
-  const small2 = mesh(new THREE.SphereGeometry(0.22, 12, 12), 0xfacc15, true);
-  small2.position.set(0.42, 0.64, -0.12);
+  const pod1 = createSplitterPod(-0.45, 0.9, 0.18, 0xfde047);
+  const pod2 = createSplitterPod(0.42, 0.64, -0.12, 0xfacc15);
+  const pod3 = createSplitterPod(0.1, 1.24, 0.18, 0xeab308);
+  const pod4 = createSplitterPod(-0.16, 0.56, -0.42, 0xfef08a);
 
-  const small3 = mesh(new THREE.SphereGeometry(0.2, 12, 12), 0xeab308, true);
-  small3.position.set(0.1, 1.23, 0.18);
+  const backSpine = new THREE.Group();
+  backSpine.position.set(0, 0.95, -0.42);
 
-  const orbitRing = mesh(new THREE.TorusGeometry(0.78, 0.035, 8, 34), 0xfef08a, true);
-  orbitRing.position.y = 0.8;
-  orbitRing.rotation.x = Math.PI / 2;
+  for (let i = 0; i < 4; i++) {
+    const spike = mesh(new THREE.ConeGeometry(0.055, 0.24, 6), 0xfef08a, true);
+    spike.position.set(-0.24 + i * 0.16, i % 2 === 0 ? 0.08 : 0, 0);
+    spike.rotation.z = Math.PI;
+    backSpine.add(spike);
+  }
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.22, 0.08, 0.32), 0x713f12);
-  footLeft.position.set(-0.28, 0.06, 0.08);
+  const footLeft = mesh(new THREE.BoxGeometry(0.24, 0.08, 0.34), 0x713f12);
+  footLeft.position.set(-0.3, 0.06, 0.08);
 
-  const footRight = mesh(new THREE.BoxGeometry(0.22, 0.08, 0.32), 0x713f12);
-  footRight.position.set(0.28, 0.06, 0.08);
+  const footRight = mesh(new THREE.BoxGeometry(0.24, 0.08, 0.34), 0x713f12);
+  footRight.position.set(0.3, 0.06, 0.08);
 
-  group.add(body, small1, small2, small3, orbitRing, footLeft, footRight);
+  group.add(
+    body,
+    shellFront,
+    pod1,
+    pod2,
+    pod3,
+    pod4,
+    backSpine,
+    footLeft,
+    footRight
+  );
+
   group.userData.core = body;
   group.userData.body = body;
-  group.userData.extraSpin = orbitRing;
+  group.userData.extraSpin = pod3;
+  group.userData.floatingParts = [pod1, pod2, pod3, pod4];
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
-  markBaseTransform(body);
-  markBaseTransform(small1);
-  markBaseTransform(small2);
-  markBaseTransform(small3);
-  markBaseTransform(orbitRing);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
 }
@@ -493,59 +856,133 @@ function createSplitterBoss(config) {
 function createDisruptorBoss(config) {
   const group = new THREE.Group();
 
-  const body = mesh(new THREE.BoxGeometry(0.9, 0.95, 0.9), config.color, true);
+  const body = mesh(new THREE.BoxGeometry(0.82, 0.92, 0.82), config.color, true);
   body.position.y = 0.72;
 
-  const antenna = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.75, 8), 0x67e8f9, true);
-  antenna.position.y = 1.46;
+  const offsetPanelLeft = mesh(new THREE.BoxGeometry(0.24, 0.58, 0.08), 0x67e8f9, true);
+  offsetPanelLeft.position.set(-0.56, 0.78, 0.16);
+
+  const offsetPanelRight = mesh(new THREE.BoxGeometry(0.24, 0.38, 0.08), 0x22d3ee, true);
+  offsetPanelRight.position.set(0.52, 0.58, 0.2);
+
+  const head = mesh(new THREE.BoxGeometry(0.46, 0.34, 0.42), 0x0891b2, true);
+  head.position.set(0, 1.34, 0.02);
+
+  const antenna = mesh(
+    new THREE.CylinderGeometry(0.035, 0.035, 0.76, 8),
+    0x67e8f9,
+    true
+  );
+  antenna.position.y = 1.72;
 
   const orb = mesh(new THREE.SphereGeometry(0.16, 14, 14), 0x22d3ee, true);
-  orb.position.y = 1.89;
+  orb.position.y = 2.14;
 
-  const ring = mesh(new THREE.TorusGeometry(0.6, 0.045, 10, 36), 0x06b6d4, true);
-  ring.position.y = 0.79;
-  ring.rotation.x = Math.PI / 2;
+  const sideOrbLeft = mesh(
+    new THREE.SphereGeometry(0.09, 10, 10),
+    0x67e8f9,
+    true
+  );
+  sideOrbLeft.position.set(-0.58, 0.92, -0.1);
 
-  const sideOrbLeft = mesh(new THREE.SphereGeometry(0.08, 10, 10), 0x67e8f9, true);
-  sideOrbLeft.position.set(-0.52, 0.79, 0);
+  const sideOrbRight = mesh(
+    new THREE.SphereGeometry(0.09, 10, 10),
+    0x67e8f9,
+    true
+  );
+  sideOrbRight.position.set(0.58, 0.92, -0.1);
 
-  const sideOrbRight = sideOrbLeft.clone();
-  sideOrbRight.position.x = 0.52;
+  const cableLeft = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.48, 6), 0x155e75);
+  cableLeft.position.set(-0.38, 0.46, -0.28);
+  cableLeft.rotation.z = 0.45;
 
-  const footLeft = mesh(new THREE.BoxGeometry(0.24, 0.08, 0.34), 0x155e75);
-  footLeft.position.set(-0.28, 0.06, 0.08);
+  const cableRight = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.48, 6), 0x155e75);
+  cableRight.position.set(0.38, 0.46, -0.28);
+  cableRight.rotation.z = -0.45;
 
-  const footRight = mesh(new THREE.BoxGeometry(0.24, 0.08, 0.34), 0x155e75);
-  footRight.position.set(0.28, 0.06, 0.08);
+  const footLeft = mesh(new THREE.BoxGeometry(0.26, 0.08, 0.36), 0x155e75);
+  footLeft.position.set(-0.3, 0.06, 0.08);
+
+  const footRight = mesh(new THREE.BoxGeometry(0.26, 0.08, 0.36), 0x155e75);
+  footRight.position.set(0.3, 0.06, 0.08);
 
   group.add(
     body,
+    offsetPanelLeft,
+    offsetPanelRight,
+    head,
     antenna,
     orb,
-    ring,
     sideOrbLeft,
     sideOrbRight,
+    cableLeft,
+    cableRight,
     footLeft,
     footRight
   );
 
-  group.userData.core = ring;
+  group.userData.core = orb;
   group.userData.body = body;
-  group.userData.extraSpin = ring;
+  group.userData.head = head;
   group.userData.secondarySpin = orb;
+  group.userData.glitchPanels = [offsetPanelLeft, offsetPanelRight, sideOrbLeft, sideOrbRight];
   group.userData.leftFoot = footLeft;
   group.userData.rightFoot = footRight;
 
-  markBaseTransform(body);
-  markBaseTransform(antenna);
-  markBaseTransform(orb);
-  markBaseTransform(ring);
-  markBaseTransform(sideOrbLeft);
-  markBaseTransform(sideOrbRight);
-  markBaseTransform(footLeft);
-  markBaseTransform(footRight);
+  markAllBaseTransforms(group);
 
   return group;
+}
+
+function createTankTread(x) {
+  const group = new THREE.Group();
+  group.position.set(x, 0.18, 0);
+
+  const base = mesh(new THREE.BoxGeometry(0.16, 0.18, 0.86), 0x111827);
+  const frontWheel = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 12), 0x78716c);
+  const backWheel = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 12), 0x78716c);
+  const midWheel = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 12), 0x57534e);
+
+  frontWheel.rotation.z = Math.PI / 2;
+  backWheel.rotation.z = Math.PI / 2;
+  midWheel.rotation.z = Math.PI / 2;
+
+  frontWheel.position.set(0, 0, 0.3);
+  backWheel.position.set(0, 0, -0.3);
+  midWheel.position.set(0, 0, 0);
+
+  group.add(base, frontWheel, backWheel, midWheel);
+
+  group.userData.wheels = [frontWheel, backWheel, midWheel];
+
+  markBaseTransform(group);
+  markBaseTransform(base);
+  markBaseTransform(frontWheel);
+  markBaseTransform(backWheel);
+  markBaseTransform(midWheel);
+
+  return group;
+}
+
+function createSplitterPod(x, y, z, color) {
+  const pod = new THREE.Group();
+
+  const blob = mesh(new THREE.SphereGeometry(0.19, 12, 12), color, true);
+  const ring = mesh(new THREE.TorusGeometry(0.2, 0.022, 8, 22), 0xfef08a, true);
+
+  ring.rotation.x = Math.PI / 2;
+
+  pod.position.set(x, y, z);
+  pod.add(blob, ring);
+
+  pod.userData.blob = blob;
+  pod.userData.ring = ring;
+
+  markBaseTransform(pod);
+  markBaseTransform(blob);
+  markBaseTransform(ring);
+
+  return pod;
 }
 
 function mesh(geometry, color, emissive = false, role = "enemy") {
@@ -588,9 +1025,19 @@ export function updateEnemies(scene) {
       continue;
     }
 
-    const dir = new THREE.Vector3().subVectors(next, enemy.position);
+    const flatNext = new THREE.Vector3(
+      next.x,
+      enemy.position.y,
+      next.z
+    );
 
-    if (dir.length() < 0.08) {
+    const dir = new THREE.Vector3().subVectors(flatNext, enemy.position);
+    const horizontalDistance = Math.hypot(
+      next.x - enemy.position.x,
+      next.z - enemy.position.z
+    );
+
+    if (horizontalDistance < 0.08) {
       enemy.userData.index++;
     } else {
       const finalSpeed =
@@ -602,7 +1049,8 @@ export function updateEnemies(scene) {
       enemy.position.add(dir.normalize().multiplyScalar(finalSpeed));
 
       animateEnemy(enemy, finalSpeed);
-      maybeSpawnFootstepDust(scene, enemy, finalSpeed);
+      maybeSpawnFootstepDust(scene, enemy);
+      maybeSpawnSpeedTrail(scene, enemy, finalSpeed);
     }
   }
 
@@ -649,22 +1097,51 @@ function updateEnemySlowState(enemy) {
 
   setEnemyEmissive(enemy, 0x000000, 0);
 }
-
 function animateEnemy(enemy, finalSpeed) {
   const core = enemy.userData.core;
   const body = enemy.userData.body;
+  const head = enemy.userData.head;
   const extraSpin = enemy.userData.extraSpin;
   const secondarySpin = enemy.userData.secondarySpin;
   const leftFoot = enemy.userData.leftFoot;
   const rightFoot = enemy.userData.rightFoot;
+  const leftArm = enemy.userData.leftArm;
+  const rightArm = enemy.userData.rightArm;
+  const leftHand = enemy.userData.leftHand;
+  const rightHand = enemy.userData.rightHand;
+  const flame = enemy.userData.flame;
+  const engine = enemy.userData.engine;
+  const leftWing = enemy.userData.leftWing;
+  const rightWing = enemy.userData.rightWing;
+  const floatingParts = enemy.userData.floatingParts ?? [];
+  const shieldPanels = enemy.userData.shieldPanels ?? [];
+  const glitchPanels = enemy.userData.glitchPanels ?? [];
+  const leftTread = enemy.userData.leftTread;
+  const rightTread = enemy.userData.rightTread;
 
   const type = enemy.userData.type;
   const isBoss = type?.startsWith("boss");
   const isElite = type === "elite";
   const isFast = type === "fast";
+  const isRunnerBoss = type === "boss_runner";
   const isTank = type === "tank" || type === "boss_crusher";
+  const isShieldBoss = type === "boss_shield";
+  const isSplitterBoss = type === "boss_splitter";
+  const isDisruptorBoss = type === "boss_disruptor";
+  const isCrusherBoss = type === "boss_crusher";
+  const isPurpleBoss = type === "boss_purple";
 
-  enemy.userData.walkPhase += finalSpeed * (isFast ? 85 : isTank ? 38 : isBoss ? 32 : 58);
+  enemy.userData.specialAnimTimer++;
+
+  enemy.userData.walkPhase += finalSpeed * (
+    isFast || isRunnerBoss
+      ? 95
+      : isTank
+        ? 34
+        : isBoss
+          ? 30
+          : 58
+  );
 
   const phase = enemy.userData.walkPhase;
   const step = Math.sin(phase);
@@ -678,7 +1155,18 @@ function animateEnemy(enemy, finalSpeed) {
 
   if (body) {
     body.rotation.z = step * (isBoss ? 0.025 : isTank ? 0.018 : 0.055);
-    body.rotation.x = isFast ? -0.22 + step * 0.03 : step * 0.018;
+    body.rotation.x = isFast
+      ? -0.22 + step * 0.045
+      : isRunnerBoss
+        ? -0.14 + step * 0.06
+        : step * 0.018;
+  }
+
+  if (head) {
+    head.rotation.z = counterStep * (isBoss ? 0.015 : 0.035);
+    head.position.y =
+      (head.userData.baseY ?? head.position.y) +
+      Math.abs(step) * (isBoss ? 0.015 : 0.025);
   }
 
   if (core) {
@@ -688,12 +1176,36 @@ function animateEnemy(enemy, finalSpeed) {
 
   if (extraSpin) {
     extraSpin.rotation.y += isBoss ? 0.035 : 0.026;
-    extraSpin.rotation.z += isBoss ? 0.03 : 0.018;
+    extraSpin.rotation.z += isRunnerBoss ? 0.08 : isBoss ? 0.03 : 0.018;
   }
 
   if (secondarySpin) {
     secondarySpin.rotation.y -= isBoss ? 0.028 : 0.02;
-    secondarySpin.rotation.z += 0.02;
+    secondarySpin.rotation.z += isShieldBoss ? 0.045 : 0.02;
+  }
+
+  if (leftArm) {
+    leftArm.rotation.x = step * (isBoss ? 0.18 : 0.28);
+    leftArm.rotation.z =
+      (leftArm.userData.baseRotZ ?? leftArm.rotation.z) + step * 0.08;
+  }
+
+  if (rightArm) {
+    rightArm.rotation.x = counterStep * (isBoss ? 0.18 : 0.28);
+    rightArm.rotation.z =
+      (rightArm.userData.baseRotZ ?? rightArm.rotation.z) - step * 0.08;
+  }
+
+  if (leftHand) {
+    leftHand.position.y =
+      (leftHand.userData.baseY ?? leftHand.position.y) +
+      Math.max(0, counterStep) * 0.08;
+  }
+
+  if (rightHand) {
+    rightHand.position.y =
+      (rightHand.userData.baseY ?? rightHand.position.y) +
+      Math.max(0, step) * 0.08;
   }
 
   if (leftFoot) {
@@ -713,13 +1225,104 @@ function animateEnemy(enemy, finalSpeed) {
     rightFoot.rotation.x = counterStep * 0.22;
   }
 
+  if (leftTread) animateTread(leftTread, finalSpeed);
+  if (rightTread) animateTread(rightTread, finalSpeed);
+
+  if (flame) {
+    const flamePulse = 1 + Math.sin(Date.now() * 0.028) * 0.18;
+    flame.scale.set(flamePulse, flamePulse, flamePulse);
+    flame.rotation.z += isRunnerBoss ? 0.2 : 0.12;
+  }
+
+  if (engine) {
+    engine.rotation.z += isRunnerBoss ? 0.12 : 0.08;
+  }
+
+  if (leftWing) {
+    leftWing.rotation.z =
+      (leftWing.userData.baseRotZ ?? leftWing.rotation.z) +
+      Math.sin(Date.now() * 0.018) * 0.08;
+  }
+
+  if (rightWing) {
+    rightWing.rotation.z =
+      (rightWing.userData.baseRotZ ?? rightWing.rotation.z) -
+      Math.sin(Date.now() * 0.018) * 0.08;
+  }
+
+  floatingParts.forEach((part, index) => {
+    part.position.y =
+      (part.userData.baseY ?? part.position.y) +
+      Math.sin(Date.now() * 0.004 + index) * (isBoss ? 0.035 : 0.025);
+
+    part.rotation.y += 0.012 + index * 0.004;
+    part.rotation.z += 0.008;
+  });
+
   if (isBoss) {
     const pulse = 1 + Math.sin(Date.now() * 0.006) * 0.012;
     enemy.scale.setScalar(pulse * (enemy.userData.modelScale ?? 1));
   }
+
+  if (isShieldBoss) {
+    const shieldPulse = 1 + Math.sin(Date.now() * 0.012) * 0.06;
+
+    shieldPanels.forEach((panel, index) => {
+      panel.scale.set(shieldPulse, shieldPulse, 1);
+
+      panel.position.y =
+        (panel.userData.baseY ?? panel.position.y) +
+        Math.sin(Date.now() * 0.006 + index) * 0.025;
+    });
+  }
+
+  if (isSplitterBoss) {
+    floatingParts.forEach((part, index) => {
+      part.scale.setScalar(1 + Math.sin(Date.now() * 0.007 + index) * 0.06);
+    });
+  }
+
+  if (isDisruptorBoss) {
+    const glitch = Math.sin(Date.now() * 0.04) * 0.025;
+    const glitch2 = Math.sin(Date.now() * 0.071) * 0.018;
+
+    if (body) {
+      body.position.x = (body.userData.baseX ?? 0) + glitch;
+      body.position.z = (body.userData.baseZ ?? 0) - glitch2;
+    }
+
+    if (head) {
+      head.position.x = (head.userData.baseX ?? 0) - glitch * 1.5;
+    }
+
+    glitchPanels.forEach((panel, index) => {
+      panel.position.x =
+        (panel.userData.baseX ?? panel.position.x) +
+        Math.sin(Date.now() * (0.035 + index * 0.011)) * 0.04;
+
+      panel.rotation.z += index % 2 === 0 ? 0.012 : -0.015;
+    });
+  }
+
+  if (isCrusherBoss) {
+    enemy.rotation.z = step * 0.012;
+  }
+
+  if (isPurpleBoss && core) {
+    const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+    core.scale.setScalar(pulse);
+  }
 }
 
-function maybeSpawnFootstepDust(scene, enemy, finalSpeed) {
+function animateTread(tread, finalSpeed) {
+  const wheels = tread.userData.wheels ?? [];
+
+  for (const wheel of wheels) {
+    wheel.rotation.y += finalSpeed * 24;
+  }
+}
+
+function maybeSpawnFootstepDust(scene, enemy) {
   if (enemy.userData.isSlowed) return;
 
   const type = enemy.userData.type;
@@ -729,7 +1332,7 @@ function maybeSpawnFootstepDust(scene, enemy, finalSpeed) {
 
   enemy.userData.stepTimer++;
 
-  const threshold = isFast ? 8 : isTank ? 18 : isBoss ? 22 : 13;
+  const threshold = isFast ? 7 : isTank ? 17 : isBoss ? 20 : 12;
 
   if (enemy.userData.stepTimer < threshold) return;
 
@@ -744,6 +1347,53 @@ function maybeSpawnFootstepDust(scene, enemy, finalSpeed) {
         : 0x9ca3af;
 
   spawnFootstepDust(scene, enemy.position, dustColor);
+
+  if (isBoss || isTank) {
+    addCameraShake(isBoss ? 0.025 : 0.012, isBoss ? 5 : 3);
+  }
+}
+
+function maybeSpawnSpeedTrail(scene, enemy, finalSpeed) {
+  if (enemy.userData.isSlowed) return;
+
+  const type = enemy.userData.type;
+  const isFast = type === "fast";
+  const isRunnerBoss = type === "boss_runner";
+  const isDisruptorBoss = type === "boss_disruptor";
+
+  if (!isFast && !isRunnerBoss && !isDisruptorBoss) return;
+
+  enemy.userData.trailTimer++;
+
+  const threshold = isRunnerBoss ? 3 : isFast ? 4 : 7;
+
+  if (enemy.userData.trailTimer < threshold) return;
+
+  enemy.userData.trailTimer = 0;
+
+  const backward = new THREE.Vector3(0, 0, -1)
+    .applyEuler(enemy.rotation)
+    .normalize();
+
+  const trailPosition = new THREE.Vector3(
+    enemy.position.x + backward.x * 0.45,
+    enemy.position.y + (isRunnerBoss ? 0.62 : 0.34),
+    enemy.position.z + backward.z * 0.45
+  );
+
+  const color = isDisruptorBoss
+    ? 0x67e8f9
+    : isRunnerBoss
+      ? 0xfb923c
+      : 0xfacc15;
+
+  const size = isRunnerBoss
+    ? 0.115
+    : finalSpeed > 0.05
+      ? 0.085
+      : 0.065;
+
+  spawnProjectileTrailEffect(scene, trailPosition, color, size);
 }
 
 function setEnemyEmissive(enemy, color, intensity = 0.65) {
@@ -778,6 +1428,10 @@ export function cleanupEnemies(scene) {
         state.selectedObject = null;
       }
 
+      if (state.hoveredObject === enemy) {
+        state.hoveredObject = null;
+      }
+
       removeHealthBar(scene, enemy);
       state.enemies.splice(i, 1);
     }
@@ -788,6 +1442,15 @@ function markBaseTransform(object) {
   object.userData.baseX = object.position.x;
   object.userData.baseY = object.position.y;
   object.userData.baseZ = object.position.z;
+  object.userData.baseRotX = object.rotation.x;
+  object.userData.baseRotY = object.rotation.y;
+  object.userData.baseRotZ = object.rotation.z;
+}
+
+function markAllBaseTransforms(group) {
+  group.traverse((child) => {
+    markBaseTransform(child);
+  });
 }
 
 function formatBossType(type) {

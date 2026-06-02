@@ -3,7 +3,8 @@ import "./style.css";
 
 import {
   createSceneSetup,
-  rebuildStageMap
+  rebuildStageMap,
+  updateSceneVisuals
 } from "./core/sceneSetup.js";
 
 import { initKeyboard, keys } from "./core/input.js";
@@ -61,6 +62,7 @@ import { initBuildPanel, updateBuildPanel } from "./ui/buildPanel.js";
 import { toggleShaderMode } from "./visuals/materials.js";
 import { startGame, togglePause, restartGame } from "./systems/gameFlow.js";
 import { initBaseSystem, updateBaseSystem } from "./systems/base.js";
+import { updateCameraShake } from "./systems/cameraShake.js";
 import { toggleMute } from "./game/audio.js";
 import { updateBossAbilities } from "./entities/bossAbilities.js";
 import { createPostProcessing } from "./visuals/postProcessing.js";
@@ -385,6 +387,9 @@ function animate() {
   updateBuildPanel();
   updateWaveControls();
   updateEventLog();
+
+  updateSceneVisuals();
+  updateCameraShake(camera);
 
   postProcessing.render(scene, camera, state.shaderMode);
 }

@@ -13,7 +13,12 @@ import {
 import { resetRelocationsForPreparation } from "../systems/relocation.js";
 import { spawnTacticalSignal } from "../visuals/tacticalSignals.js";
 import { getActivePaths } from "../core/constants.js";
-import { nextStage } from "../game/stages.js";
+import {
+  nextStage,
+  getCurrentStageEffect,
+  getCurrentStageGoldMultiplier,
+  getCurrentStageSpawnPressure
+} from "../game/stages.js";
 import { refundAndClearTowersForStageChange } from "../systems/stageCleanup.js";
 import { getStageEffectText } from "../ai/stageInfo.js";
 
@@ -47,10 +52,13 @@ export function updateWaveControls() {
 
   button.disabled = !canStart;
 
-  if (!state.started) button.textContent = "Start Game First";
-  else if (state.waveActive) button.textContent = "Wave Running";
-  else if (state.paused) button.textContent = "Paused";
-  else {
+  if (!state.started) {
+    button.textContent = "Start Game First";
+  } else if (state.waveActive) {
+    button.textContent = "Wave Running";
+  } else if (state.paused) {
+    button.textContent = "Paused";
+  } else {
     button.textContent =
       state.wave % 5 === 0 ? "Start Boss Wave" : "Start Next Wave";
   }
@@ -65,6 +73,7 @@ export function startNextWave(scene) {
   const aiStart = prepareWaveStartAIPlan();
   const strategy = getAIStrategyName();
   const feintApplied = maybeApplyPathFeint();
+  const stageEffect = getCurrentStageEffect();
 
   spawnTacticalSignal(scene, strategy);
 
@@ -86,6 +95,10 @@ export function startNextWave(scene) {
     addEventLog(`Wave ${state.wave} started. AI: ${strategy}.`);
   }
 
+  addEventLog(
+    `Stage effect: ${stageEffect.label} - ${stageEffect.description}`
+  );
+
   addEventLog(getAIPlanText());
 }
 
@@ -93,12 +106,13 @@ export function updateWave(scene) {
   if (!state.waveActive) return;
 
   const isBossWave = state.wave % 5 === 0;
-  const maxEnemies = isBossWave ? 1 : getWaveEnemyCount(state.enemiesPerWave);
+  const maxEnemies = getCurrentWaveEnemyCap(isBossWave);
+  const spawnInterval = getCurrentSpawnInterval();
 
   state.spawnTimer++;
 
   if (state.spawned < maxEnemies) {
-    if (state.spawnTimer > 60) {
+    if (state.spawnTimer > spawnInterval) {
       spawnEnemy(scene);
       state.spawned++;
       state.spawnTimer = 0;
@@ -111,7 +125,8 @@ export function updateWave(scene) {
 }
 
 function completeWave(scene, completedWaveWasBoss) {
-  const bonusGold = completedWaveWasBoss ? 60 : 20;
+  const baseBonusGold = completedWaveWasBoss ? 60 : 20;
+  const bonusGold = getStageBonusGold(baseBonusGold);
 
   recordWaveResult();
   state.gold += bonusGold;
@@ -206,4 +221,25 @@ function maybeApplyPathFeint() {
   state.currentPath = possiblePaths[randomIndex];
 
   return true;
+}
+
+function getCurrentWaveEnemyCap(isBossWave) {
+  if (isBossWave) return 1;
+
+  const baseCount = getWaveEnemyCount(state.enemiesPerWave);
+  const spawnPressure = getCurrentStageSpawnPressure();
+
+  return Math.max(1, Math.ceil(baseCount * spawnPressure));
+}
+
+function getCurrentSpawnInterval() {
+  const spawnPressure = getCurrentStageSpawnPressure();
+
+  return Math.max(28, Math.floor(60 / spawnPressure));
+}
+
+function getStageBonusGold(baseGold) {
+  const goldMultiplier = getCurrentStageGoldMultiplier();
+
+  return Math.max(1, Math.floor(baseGold * goldMultiplier));
 }

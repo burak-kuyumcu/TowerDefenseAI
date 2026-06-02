@@ -7,20 +7,31 @@ import {
   spawnDeathExplosion,
   spawnSplashEffect,
   spawnMuzzleFlash,
-  spawnRecoilSpark
+  spawnRecoilSpark,
+  spawnProjectileTrailEffect,
+  spawnEnemyHitFlash,
+  spawnCritBurst
 } from "../visuals/effects.js";
 import { spawnFloatingText } from "../visuals/floatingText.js";
 import { registerKill } from "../systems/combo.js";
-import { spawnSplitterChildren } from "../entities/bossAbilities.js"
+import { spawnSplitterChildren } from "../entities/bossAbilities.js";
 import { playShootSound, playExplosionSound } from "../game/audio.js";
+import { addCameraShake } from "../systems/cameraShake.js";
+import { showScreenFlash } from "../ui/announcer.js";
+import { getDirectionalFocusBonus } from "../systems/directionalFocus.js";
+import {
+  getCurrentStageTowerDamageMultiplier,
+  getCurrentStageSlowBonus
+} from "../game/stages.js";
 
 export function shoot(scene, tower, enemy) {
   const color = getProjectileColor(tower);
   const bulletSize = getProjectileSize(tower);
-
   const muzzlePosition = getTowerMuzzleWorldPosition(tower);
+  const focusBonus = getDirectionalFocusBonus(tower, enemy);
 
   triggerTowerFireAnimation(tower);
+
   spawnMuzzleFlash(scene, muzzlePosition, color, bulletSize * 1.8);
   spawnRecoilSpark(scene, muzzlePosition, color);
 
@@ -36,13 +47,16 @@ export function shoot(scene, tower, enemy) {
   bullet.userData = {
     target: enemy,
     speed: tower.userData.type === "sniper" ? 0.36 : 0.22,
-    damage: getEffectiveTowerDamage(tower),
-    critChance: tower.userData.critChance ?? 0.1,
+    damage: getEffectiveTowerDamage(tower, enemy),
+    critChance: getEffectiveCritChance(tower, enemy),
     dead: false,
     baseColor: color,
-    slowEffect: tower.userData.slowEffect ?? null,
-    splashEffect: tower.userData.splashEffect ?? null,
-    trailTimer: 0
+    slowEffect: getEffectiveSlowEffect(tower, enemy),
+    splashEffect: getEffectiveSplashEffect(tower, enemy),
+    trailTimer: 0,
+    sourceTowerType: tower.userData.type,
+    ultimateActive: tower.userData.ultimateActiveTimer > 0,
+    focusActive: focusBonus.active
   };
 
   playShootSound();
@@ -59,55 +73,112 @@ export function updateProjectiles(scene) {
 
     if (!target || target.userData.dead || !scene.children.includes(target)) {
       projectile.userData.dead = true;
-      scene.remove(projectile);
+      disposeProjectile(scene, projectile);
       continue;
     }
 
     projectile.userData.trailTimer++;
 
-    if (projectile.userData.trailTimer % 3 === 0) {
-      spawnProjectileTrail(scene, projectile);
+    if (projectile.userData.trailTimer % 2 === 0) {
+      spawnProjectileTrailEffect(
+        scene,
+        projectile.position,
+        projectile.userData.baseColor,
+        projectile.userData.ultimateActive || projectile.userData.focusActive
+          ? 0.09
+          : 0.065
+      );
     }
 
-    const dir = new THREE.Vector3().subVectors(target.position, projectile.position);
+    const targetPoint = getTargetImpactPoint(target);
+    const dir = new THREE.Vector3().subVectors(targetPoint, projectile.position);
     const distance = dir.length();
 
     if (distance < 0.25) {
-      const hitResult = buildHitResult(
-        projectile.userData.damage,
-        projectile.userData.critChance
-      );
-
-      damageEnemy(
-        scene,
-        target,
-        hitResult.damage,
-        hitResult.isCrit ? "#fb923c" : "#facc15",
-        hitResult.isCrit
-      );
-
-      applySlowEffect(scene, target, projectile.userData.slowEffect);
-      spawnHitEffect(scene, target.position, projectile.userData.baseColor);
-
-      if (projectile.userData.splashEffect) {
-        applySplashDamage(
-          scene,
-          target.position,
-          projectile.userData.splashEffect,
-          hitResult.isCrit
-        );
-      }
-
-      projectile.userData.dead = true;
-      scene.remove(projectile);
-
+      handleProjectileHit(scene, projectile, target);
       continue;
     }
 
-    projectile.position.add(dir.normalize().multiplyScalar(projectile.userData.speed));
+    projectile.position.add(
+      dir.normalize().multiplyScalar(projectile.userData.speed)
+    );
   }
 
   cleanupProjectiles();
+}
+
+function handleProjectileHit(scene, projectile, target) {
+  const hitResult = buildHitResult(
+    projectile.userData.damage,
+    projectile.userData.critChance
+  );
+
+  const hitColor = hitResult.isCrit
+    ? "#fb923c"
+    : projectile.userData.focusActive
+      ? "#fde68a"
+      : "#facc15";
+
+  const effectColor = hitResult.isCrit
+    ? 0xfb923c
+    : projectile.userData.focusActive
+      ? 0xfde68a
+      : projectile.userData.baseColor;
+
+  const killed = damageEnemy(
+    scene,
+    target,
+    hitResult.damage,
+    hitColor,
+    hitResult.isCrit,
+    projectile.userData.focusActive
+  );
+
+  applySlowEffect(scene, target, projectile.userData.slowEffect);
+
+  spawnHitEffect(scene, target.position, effectColor);
+  spawnEnemyHitFlash(scene, target, effectColor);
+
+  if (hitResult.isCrit) {
+    spawnCritBurst(scene, target.position, effectColor);
+    showScreenFlash("rgba(251, 146, 60, 0.16)", 8);
+    addCameraShake(0.055, 8);
+  }
+
+  if (projectile.userData.focusActive && !hitResult.isCrit) {
+    spawnFloatingText(scene, "FOCUS", target.position, "#fde68a", {
+      variant: "big",
+      yOffset: 1.15,
+      life: 38
+    });
+  }
+
+  if (projectile.userData.splashEffect) {
+    applySplashDamage(
+      scene,
+      target.position,
+      projectile.userData.splashEffect,
+      hitResult.isCrit,
+      projectile.userData.focusActive
+    );
+  }
+
+  projectile.userData.dead = true;
+  disposeProjectile(scene, projectile);
+
+  if (killed && projectile.userData.sourceTowerType === "sniper") {
+    addCameraShake(0.08, 10);
+  }
+}
+
+function getTargetImpactPoint(target) {
+  const offset = target.userData.type?.startsWith("boss") ? 0.85 : 0.45;
+
+  return new THREE.Vector3(
+    target.position.x,
+    target.position.y + offset,
+    target.position.z
+  );
 }
 
 function getProjectileColor(tower) {
@@ -189,48 +260,52 @@ function getActiveMuzzleObject(tower) {
   return muzzles[0];
 }
 
-function spawnProjectileTrail(scene, projectile) {
-  const trail = new THREE.Mesh(
-    new THREE.SphereGeometry(0.055, 8, 8),
-    new THREE.MeshBasicMaterial({
-      color: projectile.userData.baseColor,
-      transparent: true,
-      opacity: 0.35,
-      depthWrite: false
-    })
-  );
-
-  trail.position.copy(projectile.position);
-
-  trail.userData = {
-    life: 10,
-    maxLife: 10,
-    type: "projectileTrail"
-  };
-
-  scene.add(trail);
-
-  const interval = setInterval(() => {
-    trail.userData.life--;
-
-    const ratio = trail.userData.life / trail.userData.maxLife;
-    trail.scale.setScalar(Math.max(0.1, ratio));
-    trail.material.opacity = Math.max(0, ratio * 0.35);
-
-    if (trail.userData.life <= 0) {
-      scene.remove(trail);
-      trail.geometry.dispose();
-      trail.material.dispose();
-      clearInterval(interval);
-    }
-  }, 16);
-}
-
-function getEffectiveTowerDamage(tower) {
+function getEffectiveTowerDamage(tower, enemy) {
   const baseDamage = tower.userData.damage ?? 1;
   const ultimateMultiplier = tower.userData.ultimateDamageMultiplier ?? 1;
+  const focusBonus = getDirectionalFocusBonus(tower, enemy);
+  const stageDamageMultiplier = getCurrentStageTowerDamageMultiplier();
 
-  return baseDamage * ultimateMultiplier;
+  return (
+    baseDamage *
+    ultimateMultiplier *
+    focusBonus.damageMultiplier *
+    stageDamageMultiplier
+  );
+}
+
+function getEffectiveCritChance(tower, enemy) {
+  const baseCrit = tower.userData.critChance ?? 0.1;
+  const focusBonus = getDirectionalFocusBonus(tower, enemy);
+
+  return Math.min(0.95, baseCrit + focusBonus.critBonus);
+}
+
+function getEffectiveSlowEffect(tower, enemy) {
+  const slowEffect = tower.userData.slowEffect ?? null;
+  if (!slowEffect) return null;
+
+  const focusBonus = getDirectionalFocusBonus(tower, enemy);
+
+  return {
+    ...slowEffect,
+    duration: Math.floor(
+      slowEffect.duration * focusBonus.slowDurationMultiplier
+    ),
+    multiplier: slowEffect.multiplier
+  };
+}
+
+function getEffectiveSplashEffect(tower, enemy) {
+  const splashEffect = tower.userData.splashEffect ?? null;
+  if (!splashEffect) return null;
+
+  const focusBonus = getDirectionalFocusBonus(tower, enemy);
+
+  return {
+    ...splashEffect,
+    radius: splashEffect.radius * focusBonus.splashRadiusMultiplier
+  };
 }
 
 function buildHitResult(baseDamage, critChance) {
@@ -242,8 +317,15 @@ function buildHitResult(baseDamage, critChance) {
   };
 }
 
-function damageEnemy(scene, enemy, damage, color = "#ffffff", isCrit = false) {
-  if (!enemy || enemy.userData.dead) return;
+function damageEnemy(
+  scene,
+  enemy,
+  damage,
+  color = "#ffffff",
+  isCrit = false,
+  focusActive = false
+) {
+  if (!enemy || enemy.userData.dead) return false;
 
   let finalDamage = damage;
 
@@ -253,11 +335,17 @@ function damageEnemy(scene, enemy, damage, color = "#ffffff", isCrit = false) {
 
   enemy.userData.health -= finalDamage;
 
+  const prefix = isCrit ? "CRIT " : focusActive ? "FOCUS " : "";
+
   spawnFloatingText(
     scene,
-    isCrit ? `CRIT -${Math.ceil(finalDamage)}` : `-${Math.ceil(finalDamage)}`,
+    `${prefix}-${Math.ceil(finalDamage)}`,
     enemy.position,
-    color
+    color,
+    {
+      variant: isCrit ? "crit" : focusActive ? "big" : "normal",
+      yOffset: isCrit ? 1.25 : focusActive ? 1.1 : 0.9
+    }
   );
 
   if (enemy.userData.health <= 0) {
@@ -275,15 +363,26 @@ function damageEnemy(scene, enemy, damage, color = "#ffffff", isCrit = false) {
 
     registerKill(enemy.userData.score ?? 10);
     state.gold += enemy.userData.gold ?? 5;
+
+    return true;
   }
+
+  return false;
 }
 
-function applySplashDamage(scene, centerPosition, splashEffect, mainHitWasCrit = false) {
+function applySplashDamage(
+  scene,
+  centerPosition,
+  splashEffect,
+  mainHitWasCrit = false,
+  focusActive = false
+) {
   const radius = splashEffect.radius ?? 1.2;
   const baseDamage = splashEffect.damage ?? 1;
   const damage = mainHitWasCrit ? baseDamage * 2 : baseDamage;
 
   spawnSplashEffect(scene, centerPosition, radius);
+  addCameraShake(mainHitWasCrit ? 0.12 : focusActive ? 0.095 : 0.075, 12);
 
   for (const enemy of state.enemies) {
     if (enemy.userData.dead) continue;
@@ -291,8 +390,17 @@ function applySplashDamage(scene, centerPosition, splashEffect, mainHitWasCrit =
     const distance = enemy.position.distanceTo(centerPosition);
 
     if (distance <= radius) {
-      damageEnemy(scene, enemy, damage, "#fb923c", mainHitWasCrit);
+      damageEnemy(
+        scene,
+        enemy,
+        damage,
+        focusActive ? "#fed7aa" : "#fb923c",
+        mainHitWasCrit,
+        focusActive
+      );
+
       spawnHitEffect(scene, enemy.position, 0xfb923c);
+      spawnEnemyHitFlash(scene, enemy, 0xfb923c);
     }
   }
 }
@@ -301,7 +409,8 @@ function applySlowEffect(scene, enemy, slowEffect) {
   if (!slowEffect) return;
   if (enemy.userData.type?.startsWith("boss")) return;
 
-  const stageSlowBonus = enemy.userData.stageSlowBonus ?? 1;
+  const stageSlowBonus =
+    enemy.userData.stageSlowBonus ?? getCurrentStageSlowBonus();
 
   enemy.userData.slowTimer = Math.floor(slowEffect.duration * stageSlowBonus);
   enemy.userData.slowMultiplier = slowEffect.multiplier;
@@ -352,6 +461,17 @@ function addSlowVisual(scene, enemy) {
 
   enemy.add(visual);
   enemy.userData.slowVisual = visual;
+}
+
+function disposeProjectile(scene, projectile) {
+  scene.remove(projectile);
+  projectile.geometry?.dispose?.();
+
+  if (Array.isArray(projectile.material)) {
+    projectile.material.forEach((material) => material.dispose?.());
+  } else {
+    projectile.material?.dispose?.();
+  }
 }
 
 function cleanupProjectiles() {

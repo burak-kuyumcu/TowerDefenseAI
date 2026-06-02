@@ -1,75 +1,78 @@
 import { state } from "../game/state.js";
 import { getAIStrategyName, getWaveType } from "../ai/aiDirector.js";
 import { getShaderModeLabel } from "../visuals/materials.js";
-import { getCurrentStage } from "../game/stages.js";
+import {
+  getCurrentStage,
+  getCurrentStageEffect
+} from "../game/stages.js";
 import { getStageEffectText } from "../ai/stageInfo.js";
 import { getSelectedTowerUltimateText } from "../entities/towerUltimates.js";
+import { getTowerCount, getTowerLimit } from "../game/placement.js";
 
 export function updateHud() {
-  document.querySelector("#score").textContent = state.score;
-  document.querySelector("#wave").textContent = state.wave;
-  document.querySelector("#gold").textContent = state.gold;
-  document.querySelector("#baseHp").textContent = state.baseHp;
+  setText("#score", state.score);
+  setText("#wave", state.wave);
+  setText("#gold", state.gold);
+  setText("#baseHp", `${state.baseHp} / ${state.baseMaxHp}`);
 
-  const stageNameEl = document.querySelector("#stageName");
-  if (stageNameEl) {
-    stageNameEl.textContent = getCurrentStage().name;
-  }
+  const currentStage = getCurrentStage();
+  const stageEffect = getCurrentStageEffect();
 
-  const stageEffectEl = document.querySelector("#stageEffect");
-  if (stageEffectEl) {
-    stageEffectEl.textContent = getStageEffectText();
-  }
+  setText("#stageName", currentStage.name);
+  setText("#towerLimit", `${getTowerCount()} / ${getTowerLimit()}`);
+  setText("#stageEffect", formatStageEffect(stageEffect));
+  setText("#stageEffectShort", getStageEffectText());
 
-  const ultimateEl = document.querySelector("#ultimateStatus");
-  if (ultimateEl) {
-    ultimateEl.textContent = getSelectedTowerUltimateText();
-  }
+  setText("#ultimateStatus", getSelectedTowerUltimateText());
 
-  const comboEl = document.querySelector("#combo");
-  if (comboEl) {
-    comboEl.textContent = state.combo > 1 ? `x${state.combo}` : "-";
-  }
+  setText("#combo", state.combo > 1 ? `x${state.combo}` : "-");
 
-  const relocationEl = document.querySelector("#relocations");
-  if (relocationEl) {
-    relocationEl.textContent = state.waitingForNextWave
-      ? state.relocationTokens
-      : "-";
-  }
+  setText(
+    "#relocations",
+    state.waitingForNextWave ? state.relocationTokens : "-"
+  );
 
-  document.querySelector("#selectedTower").textContent =
-    formatTowerType(state.selectedTowerType);
+  setText("#selectedTower", formatTowerType(state.selectedTowerType));
+  setText("#waveType", getWaveType());
+  setText("#aiStrategy", getAIStrategyName());
+  setText("#shaderMode", getShaderModeLabel());
+  setText("#audioStatus", state.muted ? "Muted" : "On");
 
-  const waveTypeEl = document.querySelector("#waveType");
-  if (waveTypeEl) {
-    waveTypeEl.textContent = getWaveType();
-  }
+  setText("#gameState", getGameStateLabel());
+}
 
-  const aiStrategyEl = document.querySelector("#aiStrategy");
-  if (aiStrategyEl) {
-    aiStrategyEl.textContent = getAIStrategyName();
-  }
+function setText(selector, value) {
+  const element = document.querySelector(selector);
 
-  const shaderModeEl = document.querySelector("#shaderMode");
-  if (shaderModeEl) {
-    shaderModeEl.textContent = getShaderModeLabel();
-  }
+  if (!element) return;
 
-  const audioStatusEl = document.querySelector("#audioStatus");
-  if (audioStatusEl) {
-    audioStatusEl.textContent = state.muted ? "Muted" : "On";
-  }
+  element.textContent = value;
+}
 
-  document.querySelector("#gameState").textContent = !state.started
-    ? "Waiting"
-    : state.gameOver
-      ? "GAME OVER"
-      : state.paused
-        ? "Paused"
-        : state.waveActive
-          ? "Wave Running"
-          : "Preparing";
+function getGameStateLabel() {
+  if (!state.started) return "Waiting";
+  if (state.gameOver) return "GAME OVER";
+  if (state.paused) return "Paused";
+  if (state.waveActive) return "Wave Running";
+
+  return "Preparing";
+}
+
+function formatStageEffect(effect) {
+  if (!effect) return "No Stage Effect";
+
+  const speed = formatMultiplier(effect.enemySpeedMultiplier);
+  const health = formatMultiplier(effect.enemyHealthMultiplier);
+  const damage = formatMultiplier(effect.towerDamageMultiplier);
+  const gold = formatMultiplier(effect.goldMultiplier);
+  const spawn = formatMultiplier(effect.spawnPressure);
+  const slow = formatMultiplier(effect.slowBonus);
+
+  return `${effect.label} | Enemy SPD ${speed} | Enemy HP ${health} | Tower DMG ${damage} | Gold ${gold} | Spawn ${spawn} | Slow ${slow}`;
+}
+
+function formatMultiplier(value = 1) {
+  return `x${Number(value).toFixed(2)}`;
 }
 
 function formatTowerType(type) {

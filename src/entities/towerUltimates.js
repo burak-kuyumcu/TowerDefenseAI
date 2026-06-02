@@ -12,6 +12,7 @@ import { spawnFloatingText } from "../visuals/floatingText.js";
 import { registerKill } from "../systems/combo.js";
 import { showAnnouncement } from "../ui/announcer.js";
 import { addEventLog } from "../ui/eventLog.js";
+import { addCameraShake } from "../systems/cameraShake.js";
 
 const ULTIMATE_CHARGE_MAX = 100;
 
@@ -160,6 +161,7 @@ function activateSniperUltimate(scene, tower) {
   spawnLightningBeam(scene, tower.position, target.position, 0xc084fc);
   spawnFloatingText(scene, "PIERCING SHOT", tower.position, "#c084fc");
   spawnSniperImpact(scene, target.position);
+  addCameraShake(0.16, 18);
 
   showAnnouncement("PIERCING SHOT: Sniper Tower executed high damage shot");
 }
@@ -187,6 +189,7 @@ function activateSlowUltimate(scene, tower) {
 
   spawnFreezeField(scene, tower.position, radius);
   spawnFreezeBurst(scene, tower.position, radius);
+  addCameraShake(0.12, 20);
 
   showAnnouncement(`FREEZE FIELD: ${affected} enemies slowed`);
 }
@@ -211,6 +214,7 @@ function activateSplashUltimate(scene, tower) {
   }
 
   spawnMeteor(scene, tower.position);
+  addCameraShake(0.34, 36);
   spawnFloatingText(scene, "METEOR BLAST", tower.position, "#fb923c");
 
   showAnnouncement(`METEOR BLAST: ${affected} enemies hit`);

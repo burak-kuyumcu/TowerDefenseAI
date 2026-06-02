@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { state } from "../game/state.js";
+import { state } from "./state.js";
 import { GRID_MIN, GRID_MAX } from "../core/constants.js";
 import { updatePlacementVisual } from "./placement.js";
 
@@ -18,6 +18,8 @@ export function updateSelectorFromMouse(
   mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
+
+  state.hoveredObject = getHoveredSelectable(raycaster);
 
   const hits = raycaster.intersectObject(pickingPlane);
   if (hits.length === 0) return;
@@ -63,19 +65,11 @@ export function handleSelectionClick(
 
   raycaster.setFromCamera(mouse, camera);
 
-  const towerMeshes = collectSelectableMeshes(state.towers, "parentTower");
-  const towerHits = raycaster.intersectObjects(towerMeshes);
+  const hovered = getHoveredSelectable(raycaster);
 
-  if (towerHits.length > 0) {
-    state.selectedObject = towerHits[0].object.userData.parentTower;
-    return true;
-  }
-
-  const enemyMeshes = collectSelectableMeshes(state.enemies, "parentEnemy");
-  const enemyHits = raycaster.intersectObjects(enemyMeshes);
-
-  if (enemyHits.length > 0) {
-    state.selectedObject = enemyHits[0].object.userData.parentEnemy;
+  if (hovered) {
+    state.selectedObject = hovered;
+    state.hoveredObject = hovered;
     return true;
   }
 
@@ -83,10 +77,30 @@ export function handleSelectionClick(
   return false;
 }
 
+function getHoveredSelectable(raycaster) {
+  const towerMeshes = collectSelectableMeshes(state.towers, "parentTower");
+  const towerHits = raycaster.intersectObjects(towerMeshes);
+
+  if (towerHits.length > 0) {
+    return towerHits[0].object.userData.parentTower;
+  }
+
+  const enemyMeshes = collectSelectableMeshes(state.enemies, "parentEnemy");
+  const enemyHits = raycaster.intersectObjects(enemyMeshes);
+
+  if (enemyHits.length > 0) {
+    return enemyHits[0].object.userData.parentEnemy;
+  }
+
+  return null;
+}
+
 function collectSelectableMeshes(objects, parentKey) {
   const meshes = [];
 
   for (const object of objects) {
+    if (!object) continue;
+
     if (object.isMesh) {
       object.userData[parentKey] = object;
       meshes.push(object);
@@ -94,10 +108,10 @@ function collectSelectableMeshes(objects, parentKey) {
     }
 
     object.traverse((child) => {
-      if (child.isMesh) {
-        child.userData[parentKey] = object;
-        meshes.push(child);
-      }
+      if (!child.isMesh) return;
+
+      child.userData[parentKey] = object;
+      meshes.push(child);
     });
   }
 
@@ -105,48 +119,106 @@ function collectSelectableMeshes(objects, parentKey) {
 }
 
 export function updateHighlights() {
+  updateTowerHighlights();
+  updateEnemyHighlights();
+}
+
+function updateTowerHighlights() {
   for (const tower of state.towers) {
-    tower.traverse((child) => {
-      if (!child.isMesh || !child.material?.emissive) return;
+    const isSelected = tower === state.selectedObject;
+    const isHovered = tower === state.hoveredObject;
+    const isSlowed = tower.userData.slowTimer > 0;
 
-      if (tower === state.selectedObject) {
-        child.material.emissive.set(0xffff00);
-      } else if (tower.userData.slowTimer > 0) {
-        child.material.emissive.set(0x581c87);
-      } else {
-        child.material.emissive.set(0x000000);
-      }
-    });
-  }
+    const isUltimateActive = tower.userData.ultimateActiveTimer > 0;
+    const isUltimateReady =
+      (tower.userData.ultimateCharge ?? 0) >= 100 &&
+      tower.userData.ultimateCooldown <= 0;
 
-  for (const enemy of state.enemies) {
-    if (enemy.isMesh) {
-      updateSingleEnemyHighlight(enemy, enemy);
-      continue;
+    let color = 0x000000;
+    let intensity = 0;
+
+    if (isSelected) {
+      color = 0xfacc15;
+      intensity = 0.78;
+    } else if (isHovered) {
+      color = 0x60a5fa;
+      intensity = 0.42;
+    } else if (isSlowed) {
+      color = 0x581c87;
+      intensity = 0.55;
+    } else if (isUltimateActive) {
+      color = getUltimateColor(tower.userData.type);
+      intensity = 0.62;
+    } else if (isUltimateReady) {
+      color = getUltimateColor(tower.userData.type);
+      intensity = 0.28;
     }
 
-    enemy.traverse((child) => {
-      if (!child.isMesh || !child.material?.emissive) return;
-
-      if (enemy === state.selectedObject) {
-        child.material.emissive.set(0xffff00);
-      } else if (enemy.userData.slowTimer > 0) {
-        child.material.emissive.set(0x14b8a6);
-      } else {
-        child.material.emissive.set(0x000000);
-      }
-    });
+    setObjectEmissive(tower, color, intensity);
   }
 }
 
-function updateSingleEnemyHighlight(enemy, root) {
-  if (!enemy.material?.emissive) return;
+function updateEnemyHighlights() {
+  for (const enemy of state.enemies) {
+    const isSelected = enemy === state.selectedObject;
+    const isHovered = enemy === state.hoveredObject;
+    const isSlowed = enemy.userData.slowTimer > 0;
 
-  if (root === state.selectedObject) {
-    enemy.material.emissive.set(0xffff00);
-  } else if (root.userData.slowTimer > 0) {
-    enemy.material.emissive.set(0x14b8a6);
-  } else {
-    enemy.material.emissive.set(0x000000);
+    let color = 0x000000;
+    let intensity = 0;
+
+    if (isSelected) {
+      color = 0xef4444;
+      intensity = 0.85;
+    } else if (isHovered) {
+      color = 0xf97316;
+      intensity = 0.55;
+    } else if (isSlowed) {
+      color = 0x14b8a6;
+      intensity = 0.6;
+    }
+
+    setObjectEmissive(enemy, color, intensity);
   }
+}
+
+function setObjectEmissive(object, color, intensity) {
+  if (!object) return;
+
+  if (object.isMesh) {
+    setMeshEmissive(object, color, intensity);
+    return;
+  }
+
+  object.traverse((child) => {
+    if (!child.isMesh) return;
+    setMeshEmissive(child, color, intensity);
+  });
+}
+
+function setMeshEmissive(mesh, color, intensity) {
+  if (mesh.material?.emissive?.set) {
+    mesh.material.emissive.set(color);
+  }
+
+  if (typeof mesh.material?.emissiveIntensity === "number") {
+    mesh.material.emissiveIntensity = intensity;
+  }
+
+  if (mesh.material?.uniforms?.uEmissive?.value?.set) {
+    mesh.material.uniforms.uEmissive.value.set(color);
+  }
+
+  if (mesh.material?.uniforms?.uEmissiveIntensity) {
+    mesh.material.uniforms.uEmissiveIntensity.value = intensity;
+  }
+}
+
+function getUltimateColor(type) {
+  if (type === "rapid") return 0x38bdf8;
+  if (type === "sniper") return 0xc084fc;
+  if (type === "slow") return 0x5eead4;
+  if (type === "splash") return 0xfb923c;
+
+  return 0x60a5fa;
 }

@@ -3,7 +3,9 @@ import { PATHS } from "../core/constants.js";
 export const state = {
   selectedTile: { x: -4, z: -4 },
   selectedTowerType: "normal",
+
   selectedObject: null,
+  hoveredObject: null,
 
   currentPath: PATHS[0],
   stageVersion: 0,
@@ -34,6 +36,8 @@ export const state = {
   relocationMaxTokens: 2,
   relocationMoveCooldown: 0,
 
+  focusRotationSpeed: 0.045,
+
   score: 0,
   gold: 100,
   wave: 1,
@@ -53,5 +57,6 @@ export const state = {
   towers: [],
   projectiles: [],
 
-  towerSet: new Set()
+  towerSet: new Set(),
+  terrainBlockedSet: new Set()
 };

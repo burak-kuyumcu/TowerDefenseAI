@@ -1,6 +1,8 @@
-import { state } from "../game/state.js";
+import { state } from "./state.js";
 import { updateTowerLabelText, removeTowerLabel } from "../visuals/towerLabels.js";
 import { addEventLog } from "../ui/eventLog.js";
+import { showAnnouncement } from "../ui/announcer.js";
+import { applyTowerUpgradeVisual } from "../entities/towers.js";
 
 export function getUpgradeCost(tower) {
   if (!tower) return null;
@@ -40,24 +42,42 @@ export function upgradeSelectedTower() {
 
   const tower = state.selectedObject;
 
-  if (!canUpgradeTower(tower)) return;
+  if (!canUpgradeTower(tower)) {
+    const cost = getUpgradeCost(tower);
+
+    if (cost === null) {
+      showAnnouncement("Tower already at max level");
+      addEventLog(`${formatTowerType(tower.userData.type)} is already max level.`);
+      return;
+    }
+
+    showAnnouncement("Not enough gold for upgrade");
+    addEventLog(`Upgrade failed. Need ${cost} gold.`);
+    return;
+  }
 
   const upgradeCost = getUpgradeCost(tower);
 
   state.gold -= upgradeCost;
   tower.userData.level++;
 
-  tower.userData.damage += 1;
-  tower.userData.range += 0.4;
-  tower.userData.fireRate = Math.max(10, tower.userData.fireRate - 6);
+  tower.userData.damage += getDamageUpgradeBonus(tower);
+  tower.userData.range += getRangeUpgradeBonus(tower);
+  tower.userData.fireRate = Math.max(
+    10,
+    tower.userData.fireRate - getFireRateUpgradeBonus(tower)
+  );
 
   boostUltimateOnUpgrade(tower);
-
-  tower.scale.multiplyScalar(1.15);
+  applyTowerUpgradeVisual(tower);
   updateTowerLabelText(tower);
 
+  const level = tower.userData.level;
+
+  showAnnouncement(`${formatTowerType(tower.userData.type)} upgraded to LVL ${level}`);
+
   addEventLog(
-    `${formatTowerType(tower.userData.type)} upgraded to level ${tower.userData.level}. Ultimate charge boosted.`
+    `${formatTowerType(tower.userData.type)} upgraded to level ${level}. Visual modules installed.`
   );
 }
 
@@ -87,6 +107,38 @@ export function sellTower(scene, tower) {
   state.gold += refund;
 
   addEventLog(`${formatTowerType(tower.userData.type)} sold. +${refund} gold.`);
+}
+
+function getDamageUpgradeBonus(tower) {
+  const type = tower.userData.type;
+
+  if (type === "sniper") return tower.userData.level >= 3 ? 3 : 2;
+  if (type === "splash") return tower.userData.level >= 3 ? 2 : 1;
+  if (type === "rapid") return 1;
+  if (type === "slow") return 1;
+
+  return tower.userData.level >= 3 ? 2 : 1;
+}
+
+function getRangeUpgradeBonus(tower) {
+  const type = tower.userData.type;
+
+  if (type === "sniper") return 0.55;
+  if (type === "slow") return 0.45;
+  if (type === "splash") return 0.42;
+
+  return 0.35;
+}
+
+function getFireRateUpgradeBonus(tower) {
+  const type = tower.userData.type;
+
+  if (type === "rapid") return 8;
+  if (type === "sniper") return 7;
+  if (type === "splash") return 6;
+  if (type === "slow") return 5;
+
+  return 6;
 }
 
 function boostUltimateOnUpgrade(tower) {
@@ -129,5 +181,6 @@ function formatTowerType(type) {
   if (type === "sniper") return "Sniper Tower";
   if (type === "slow") return "Slow Tower";
   if (type === "splash") return "Splash Tower";
+
   return "Normal Tower";
 }
