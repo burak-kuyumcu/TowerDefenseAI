@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { state } from "./state.js";
-import { GRID_MIN, GRID_MAX } from "../core/constants.js";
-import { updatePlacementVisual } from "./placement.js";
+import {
+  GRID_MIN,
+  GRID_MAX,
+  getActivePathSet
+} from "../core/constants.js";
 
 export function updateSelectorFromMouse(
   clientX,
@@ -22,31 +25,50 @@ export function updateSelectorFromMouse(
   state.hoveredObject = getHoveredSelectable(raycaster);
 
   const hits = raycaster.intersectObject(pickingPlane);
-  if (hits.length === 0) return;
+
+  if (hits.length === 0) {
+    state.selectedTile.x = null;
+    state.selectedTile.z = null;
+    return;
+  }
 
   const point = hits[0].point;
 
-  state.selectedTile.x = THREE.MathUtils.clamp(
+  const tileX = THREE.MathUtils.clamp(
     Math.round(point.x),
     GRID_MIN,
     GRID_MAX
   );
 
-  state.selectedTile.z = THREE.MathUtils.clamp(
+  const tileZ = THREE.MathUtils.clamp(
     Math.round(point.z),
     GRID_MIN,
     GRID_MAX
   );
+
+  state.selectedTile.x = tileX;
+  state.selectedTile.z = tileZ;
 }
 
 export function updateSelector(selector) {
-  selector.position.set(
-    state.selectedTile.x,
-    0.05,
-    state.selectedTile.z
-  );
+  if (!selector) return;
 
-  updatePlacementVisual(selector);
+  const tileX = state.selectedTile.x;
+  const tileZ = state.selectedTile.z;
+
+  if (!Number.isFinite(tileX) || !Number.isFinite(tileZ)) {
+    selector.visible = false;
+    return;
+  }
+
+  selector.position.set(tileX, 0.145, tileZ);
+  selector.visible = true;
+
+  const canPlace = isTileBuildable(tileX, tileZ);
+
+  selector.userData.canPlace = canPlace;
+
+  applySelectorMaterial(selector, canPlace);
 }
 
 export function handleSelectionClick(
@@ -77,22 +99,88 @@ export function handleSelectionClick(
   return false;
 }
 
+function isTileBuildable(x, z) {
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+
+  if (x < GRID_MIN || x > GRID_MAX) return false;
+  if (z < GRID_MIN || z > GRID_MAX) return false;
+
+  const key = `${x},${z}`;
+  const pathSet = getActivePathSet();
+
+  if (pathSet.has(key)) return false;
+  if (state.towerSet?.has(key)) return false;
+  if (state.terrainBlockedSet?.has(key)) return false;
+
+  return true;
+}
+
+function applySelectorMaterial(selector, canPlace) {
+  const validColor = 0x22c55e;
+  const invalidColor = 0xef4444;
+
+  if (selector.material?.color?.set) {
+    selector.material.color.set(canPlace ? validColor : invalidColor);
+  }
+
+  if (typeof selector.material?.opacity === "number") {
+    selector.material.opacity = canPlace ? 0.5 : 0.38;
+  }
+
+  selector.scale.set(canPlace ? 1 : 0.92, 1, canPlace ? 1 : 0.92);
+}
+
 function getHoveredSelectable(raycaster) {
+  const transformableMeshes = collectSceneTransformableMeshes();
+  const transformableHits = raycaster.intersectObjects(
+    transformableMeshes,
+    true
+  );
+
+  if (transformableHits.length > 0) {
+    return transformableHits[0].object.userData.parentTransformObject;
+  }
+
   const towerMeshes = collectSelectableMeshes(state.towers, "parentTower");
-  const towerHits = raycaster.intersectObjects(towerMeshes);
+  const towerHits = raycaster.intersectObjects(towerMeshes, true);
 
   if (towerHits.length > 0) {
     return towerHits[0].object.userData.parentTower;
   }
 
   const enemyMeshes = collectSelectableMeshes(state.enemies, "parentEnemy");
-  const enemyHits = raycaster.intersectObjects(enemyMeshes);
+  const enemyHits = raycaster.intersectObjects(enemyMeshes, true);
 
   if (enemyHits.length > 0) {
     return enemyHits[0].object.userData.parentEnemy;
   }
 
   return null;
+}
+
+function collectSceneTransformableMeshes() {
+  const meshes = [];
+
+  if (!window.__transformShowcaseObjects) return meshes;
+
+  for (const object of window.__transformShowcaseObjects) {
+    if (!object) continue;
+
+    if (object.isMesh) {
+      object.userData.parentTransformObject = object;
+      meshes.push(object);
+      continue;
+    }
+
+    object.traverse((child) => {
+      if (!child.isMesh) return;
+
+      child.userData.parentTransformObject = object;
+      meshes.push(child);
+    });
+  }
+
+  return meshes;
 }
 
 function collectSelectableMeshes(objects, parentKey) {
@@ -119,8 +207,31 @@ function collectSelectableMeshes(objects, parentKey) {
 }
 
 export function updateHighlights() {
+  updateTransformShowcaseHighlights();
   updateTowerHighlights();
   updateEnemyHighlights();
+}
+
+function updateTransformShowcaseHighlights() {
+  if (!window.__transformShowcaseObjects) return;
+
+  for (const object of window.__transformShowcaseObjects) {
+    const isSelected = object === state.selectedObject;
+    const isHovered = object === state.hoveredObject;
+
+    let color = 0x000000;
+    let intensity = 0;
+
+    if (isSelected) {
+      color = 0xfacc15;
+      intensity = 0.85;
+    } else if (isHovered) {
+      color = 0x38bdf8;
+      intensity = 0.45;
+    }
+
+    setObjectEmissive(object, color, intensity);
+  }
 }
 
 function updateTowerHighlights() {
@@ -192,6 +303,7 @@ function setObjectEmissive(object, color, intensity) {
 
   object.traverse((child) => {
     if (!child.isMesh) return;
+
     setMeshEmissive(child, color, intensity);
   });
 }

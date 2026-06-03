@@ -24,8 +24,8 @@ export const xrayFragmentShader = `
   void main() {
     float rim = pow(vRim, 1.05);
 
-    vec3 xray = vec3(0.2, 0.95, 1.0);
-    vec3 color = xray * (0.18 + rim * 1.65);
+    vec3 xrayColor = vec3(0.2, 0.95, 1.0);
+    vec3 color = xrayColor * (0.18 + rim * 1.65);
     color += uEmissive * uEmissiveIntensity;
 
     gl_FragColor = vec4(color, 0.68);

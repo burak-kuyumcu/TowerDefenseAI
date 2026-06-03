@@ -1,7 +1,5 @@
 import { state } from "../game/state.js";
-import { getUpgradeCost, getSellRefund } from "../game/upgrade.js";
-import { canRelocateNow } from "../systems/relocation.js";
-import { getDirectionalFocusText } from "../systems/directionalFocus.js";
+import { getControlModeLabel } from "../systems/controls.js";
 
 export function updateSelectedInfo() {
   const content = document.querySelector("#selectedInfoContent");
@@ -10,142 +8,195 @@ export function updateSelectedInfo() {
   const selected = state.selectedObject;
 
   if (!selected) {
-    content.innerHTML = "None";
-    return;
-  }
-
-  if (state.towers.includes(selected)) {
-    const level = selected.userData.level ?? 1;
-    const upgradeCost = getUpgradeCost(selected);
-    const refund = getSellRefund(selected);
-    const targetMode = formatTargetMode(selected.userData.targetMode ?? "nearest");
-    const critChance = Math.round((selected.userData.critChance ?? 0) * 100);
-
-    const ultimateName =
-      selected.userData.ultimateName ?? getUltimateName(selected.userData.type);
-
-    const ultimateCharge = Math.floor(selected.userData.ultimateCharge ?? 0);
-    const ultimateStatus = getUltimateStatus(selected);
-
-    const relocationText = getRelocationText(selected);
-
-    const upgradeInfo =
-      level >= 3
-        ? "Max Level"
-        : `
-          Upgrade Cost: ${upgradeCost} Gold<br>
-          Next Level: ${level + 1}<br>
-          Damage: ${selected.userData.damage} → ${selected.userData.damage + 1}<br>
-          Range: ${selected.userData.range.toFixed(1)} → ${(selected.userData.range + 0.4).toFixed(1)}<br>
-          Fire Rate: ${selected.userData.fireRate} → ${Math.max(10, selected.userData.fireRate - 6)}
-        `;
-
     content.innerHTML = `
-      Type: ${formatTowerType(selected.userData.type)}<br>
-      Level: ${level}<br>
-      Target Mode: ${targetMode}<br>
-      Damage: ${selected.userData.damage}<br>
-      Crit Chance: ${critChance}%<br>
-      Range: ${selected.userData.range.toFixed(1)}<br>
-      Fire Rate: ${selected.userData.fireRate}<br>
-      Status: ${selected.userData.slowTimer > 0 ? "Slowed" : "Normal"}<br>
-      Sell Refund: ${refund} Gold<br>
-      <hr>
-      <b>Directional Focus</b><br>
-      ${getDirectionalFocusText(selected)}<br>
-      Rotate: Q / E<br>
-      <hr>
-      <b>Translation</b><br>
-      ${relocationText}<br>
-      <hr>
-      Ultimate: ${ultimateName}<br>
-      Charge: ${ultimateCharge}%<br>
-      Ultimate Status: ${ultimateStatus}<br>
-      Key: F<br>
-      <hr>
-      ${upgradeInfo}
+      <div class="selected-empty">None</div>
+      <div class="selected-hint">
+        Left click a tower or enemy to select it.
+      </div>
+      <div class="selected-hint">
+        F3 cycles Camera / Object / Spotlight / Directional modes.
+      </div>
     `;
     return;
   }
 
-  if (state.enemies.includes(selected)) {
-    content.innerHTML = `
-      Type: ${formatEnemyType(selected.userData.type)}<br>
-      HP: ${Math.max(0, Math.ceil(selected.userData.health))} / ${selected.userData.maxHealth}<br>
-      Speed: ${selected.userData.speed.toFixed(3)}<br>
-      Base Damage: ${selected.userData.baseDamage}<br>
-      Reward: ${selected.userData.gold} Gold / ${selected.userData.score} Score
-    `;
-    return;
-  }
+  const type = getSelectedType(selected);
+  const displayName = getSelectedName(selected);
+  const positionText = formatVector(selected.position);
+  const rotationText = formatRotation(selected.rotation);
+  const isObjectMode = state.controlMode === "object";
 
-  content.innerHTML = "Unknown";
+  content.innerHTML = `
+    <div class="selected-title">${displayName}</div>
+
+    <div class="selected-row">
+      <span>Type</span>
+      <b>${type}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Control</span>
+      <b>${getControlModeLabel()}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Position</span>
+      <b>${positionText}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Rotation</span>
+      <b>${rotationText}</b>
+    </div>
+
+    ${getTowerInfo(selected)}
+    ${getEnemyInfo(selected)}
+
+    <div class="${isObjectMode ? "selected-mode-active" : "selected-mode-passive"}">
+      ${getObjectModeText(isObjectMode)}
+    </div>
+  `;
 }
 
-function getRelocationText(tower) {
-  if (tower.userData.relocationTween?.active) {
-    return "Translate Status: Moving";
+function getSelectedType(object) {
+  if (state.towers.includes(object)) return "Tower";
+  if (state.enemies.includes(object)) return "Enemy";
+  if (object.userData?.type) return object.userData.type;
+
+  return "Object";
+}
+
+function getSelectedName(object) {
+  if (state.towers.includes(object)) {
+    return `${formatTowerType(object.userData.type)} Tower`;
   }
 
-  const lastFrom = tower.userData.lastRelocationFrom;
-  const lastTo = tower.userData.lastRelocationTo;
+  if (state.enemies.includes(object)) {
+    return object.userData.isBoss
+      ? `${formatEnemyType(object.userData.type)} Boss`
+      : `${formatEnemyType(object.userData.type)} Enemy`;
+  }
 
-  const lastMove =
-    lastFrom && lastTo
-      ? `<br>Last Translate: ${lastFrom} → ${lastTo}`
-      : "";
+  return object.userData?.name ?? "Selected Object";
+}
 
-  if (canRelocateNow()) {
+function getTowerInfo(object) {
+  if (!state.towers.includes(object)) return "";
+
+  const level = object.userData.level ?? 1;
+  const damage = object.userData.damage ?? "-";
+  const range = object.userData.range ?? "-";
+  const targetMode = object.userData.targetMode ?? "first";
+  const ultimateCharge = Math.floor(object.userData.ultimateCharge ?? 0);
+
+  return `
+    <div class="selected-row">
+      <span>Level</span>
+      <b>${level}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Damage</span>
+      <b>${damage}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Range</span>
+      <b>${Number(range).toFixed ? Number(range).toFixed(1) : range}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Target</span>
+      <b>${formatTargetMode(targetMode)}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Ultimate</span>
+      <b>${ultimateCharge}%</b>
+    </div>
+  `;
+}
+
+function getEnemyInfo(object) {
+  if (!state.enemies.includes(object)) return "";
+
+  const hp = Math.ceil(object.userData.hp ?? 0);
+  const maxHp = Math.ceil(object.userData.maxHp ?? hp);
+  const speed = object.userData.speed ?? "-";
+
+  return `
+    <div class="selected-row">
+      <span>HP</span>
+      <b>${hp} / ${maxHp}</b>
+    </div>
+
+    <div class="selected-row">
+      <span>Speed</span>
+      <b>${Number(speed).toFixed ? Number(speed).toFixed(2) : speed}</b>
+    </div>
+  `;
+}
+
+function getObjectModeText(isObjectMode) {
+  if (isObjectMode) {
     return `
-      Translate: Available (${state.relocationTokens})<br>
-      Move: Arrow Keys${lastMove}
+      Object 6DOF active<br>
+      W/A/S/D: Move X/Z<br>
+      Q/E: Move Y<br>
+      Arrows: Pitch/Yaw<br>
+      PageUp/PageDown: Roll
     `;
   }
 
-  return `Translate: Only between waves${lastMove}`;
+  return `
+    Press F3 until Object 6DOF mode to freely translate and rotate this object.
+  `;
 }
 
-function getUltimateStatus(tower) {
-  if (tower.userData.ultimateActiveTimer > 0) return "Active";
-  if (tower.userData.ultimateCooldown > 0) return "Cooldown";
-  if ((tower.userData.ultimateCharge ?? 0) >= 100) return "Ready";
+function formatVector(vector) {
+  if (!vector) return "-";
 
-  return "Charging";
+  return `X ${vector.x.toFixed(2)}, Y ${vector.y.toFixed(2)}, Z ${vector.z.toFixed(2)}`;
 }
 
-function getUltimateName(type) {
-  if (type === "rapid") return "Overdrive";
-  if (type === "sniper") return "Piercing Shot";
-  if (type === "slow") return "Freeze Field";
-  if (type === "splash") return "Meteor Blast";
+function formatRotation(rotation) {
+  if (!rotation) return "-";
 
-  return "Focus Burst";
+  const x = THREE_RAD_TO_DEG(rotation.x);
+  const y = THREE_RAD_TO_DEG(rotation.y);
+  const z = THREE_RAD_TO_DEG(rotation.z);
+
+  return `X ${x}°, Y ${y}°, Z ${z}°`;
+}
+
+function THREE_RAD_TO_DEG(value) {
+  return Math.round((value * 180) / Math.PI);
+}
+
+function formatTowerType(type) {
+  if (type === "rapid") return "Rapid";
+  if (type === "sniper") return "Sniper";
+  if (type === "slow") return "Slow";
+  if (type === "splash") return "Splash";
+
+  return "Normal";
+}
+
+function formatEnemyType(type) {
+  if (type === "fast") return "Fast";
+  if (type === "tank") return "Tank";
+  if (type === "armored") return "Armored";
+  if (type === "swarm") return "Swarm";
+  if (type === "boss") return "Boss";
+
+  return "Basic";
 }
 
 function formatTargetMode(mode) {
   if (mode === "first") return "First";
+  if (mode === "last") return "Last";
   if (mode === "strongest") return "Strongest";
   if (mode === "weakest") return "Weakest";
-  return "Nearest";
-}
 
-function formatTowerType(type) {
-  if (type === "rapid") return "Rapid Tower";
-  if (type === "sniper") return "Sniper Tower";
-  if (type === "slow") return "Slow Tower";
-  if (type === "splash") return "Splash Tower";
-  return "Normal Tower";
-}
-
-function formatEnemyType(type) {
-  if (type === "elite") return "Elite Enemy";
-  if (type === "fast") return "Fast Enemy";
-  if (type === "tank") return "Tank Enemy";
-  if (type === "boss_purple") return "Purple Boss";
-  if (type === "boss_crusher") return "Crusher Boss";
-  if (type === "boss_runner") return "Runner Boss";
-  if (type === "boss_shield") return "Shield Boss";
-  if (type === "boss_splitter") return "Splitter Boss";
-  if (type === "boss_disruptor") return "Disruptor Boss";
-  return "Normal Enemy";
+  return mode;
 }

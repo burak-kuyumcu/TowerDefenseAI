@@ -7,6 +7,14 @@ import {
   updateSceneVisuals
 } from "./core/sceneSetup.js";
 
+import {
+  updateCameraProjection
+} from "./core/cameraSetup.js";
+
+import {
+  resizeGameRenderer
+} from "./core/rendererSetup.js";
+
 import { initKeyboard, keys } from "./core/input.js";
 import { state } from "./game/state.js";
 
@@ -41,9 +49,19 @@ import {
 
 import { updateCombo } from "./systems/combo.js";
 
+import {
+  initAchievements,
+  updateAchievements
+} from "./systems/achievements.js";
+
 import { initPathVisuals, updatePathVisuals } from "./visuals/pathVisuals.js";
 import { initStageVisuals, updateStageVisuals } from "./visuals/stageVisuals.js";
 import { updateTowerLabels } from "./visuals/towerLabels.js";
+
+import {
+  initLightControlVisuals,
+  updateLightControlVisuals
+} from "./visuals/lightControlVisuals.js";
 
 import { updateHud } from "./ui/hud.js";
 import { updateOverlay } from "./ui/overlay.js";
@@ -54,6 +72,7 @@ import { updateBossHud } from "./ui/bossHud.js";
 import { updateWavePreview } from "./ui/wavePreview.js";
 import { updateEventLog } from "./ui/eventLog.js";
 import { updateAIFeedback } from "./ui/aiFeedback.js";
+import { updateControlStatus } from "./ui/controlStatus.js";
 
 import { initUIActions, updateUIActions } from "./ui/uiActions.js";
 import { initSettingsPanel, updateSettingsPanel } from "./ui/settingsPanel.js";
@@ -75,6 +94,11 @@ import {
 } from "./visuals/nameShowcase.js";
 
 import {
+  initTransformShowcase,
+  getTransformShowcaseObjects
+} from "./visuals/transformShowcase.js";
+
+import {
   createRangePreview,
   updateRangePreview
 } from "./visuals/rangePreview.js";
@@ -91,7 +115,10 @@ import {
   updateLights,
   updateDirectionalLight,
   moveSelectedObject,
-  rotateSelectedObject
+  rotateSelectedObject,
+  cycleControlMode,
+  getControlModeLabel,
+  adjustActiveLightIntensity
 } from "./systems/controls.js";
 
 const canvas = document.querySelector("#app");
@@ -123,6 +150,10 @@ initStageVisuals(scene);
 updateStageVisuals();
 initTacticalOverlay(scene);
 initNameShowcase(scene);
+initTransformShowcase(scene);
+window.__transformShowcaseObjects = getTransformShowcaseObjects();
+initLightControlVisuals(scene, directionalLight, spotLight);
+initAchievements();
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -137,7 +168,7 @@ scene.add(pickingPlane);
 
 function isUIElement(target) {
   return target.closest(
-    "#hud, #help, #selectedInfo, #actionPanel, #overlay, #minimap, #settingsButton, #settingsPanel, #buildPanel, #bossHud, #wavePreview, #eventLog, #aiFeedback"
+    "#hud, #help, #selectedInfo, #actionPanel, #overlay, #minimap, #settingsButton, #quickPanelButtons, #settingsPanel, #buildPanel, #bossHud, #wavePreview, #eventLog, #aiFeedback, #achievementPanel, #stageIntelPanel, #controlStatusPanel"
   );
 }
 
@@ -145,14 +176,123 @@ function toggleHelp() {
   document.querySelector("#help")?.classList.toggle("hidden");
 }
 
+function closeInfoPanels(exceptSelector = null) {
+  const panels = ["#stageIntelPanel", "#achievementPanel", "#aiFeedback"];
+
+  for (const selector of panels) {
+    if (selector === exceptSelector) continue;
+
+    document.querySelector(selector)?.classList.add("hidden");
+  }
+}
+
+function toggleExclusivePanel(selector) {
+  const panel = document.querySelector(selector);
+  if (!panel) return;
+
+  const willOpen = panel.classList.contains("hidden");
+
+  closeInfoPanels(selector);
+
+  if (willOpen) {
+    panel.classList.remove("hidden");
+  } else {
+    panel.classList.add("hidden");
+  }
+}
+
+function toggleStageIntel() {
+  toggleExclusivePanel("#stageIntelPanel");
+}
+
+function toggleAchievements() {
+  toggleExclusivePanel("#achievementPanel");
+}
+
+function toggleAIFeedback() {
+  toggleExclusivePanel("#aiFeedback");
+}
+
+function initQuickPanelButtons() {
+  document
+    .querySelector("#quickHelpButton")
+    ?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleHelp();
+    });
+
+  document
+    .querySelector("#quickStageButton")
+    ?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleStageIntel();
+    });
+
+  document
+    .querySelector("#quickAchievementsButton")
+    ?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleAchievements();
+    });
+
+  document
+    .querySelector("#quickAIButton")
+    ?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleAIFeedback();
+    });
+}
+
+function showControlModeAnnouncement() {
+  const announcer = document.querySelector("#announcer");
+
+  if (!announcer) return;
+
+  announcer.textContent = `Control Mode: ${getControlModeLabel()}`;
+
+  window.clearTimeout(showControlModeAnnouncement.timeoutId);
+
+  showControlModeAnnouncement.timeoutId = window.setTimeout(() => {
+    if (announcer.textContent.startsWith("Control Mode:")) {
+      announcer.textContent = "";
+    }
+  }, 1400);
+}
+
+showControlModeAnnouncement.timeoutId = null;
+
+initQuickPanelButtons();
+
 window.addEventListener("keydown", (e) => {
+  if (
+    e.code === "ArrowUp" ||
+    e.code === "ArrowDown" ||
+    e.code === "ArrowLeft" ||
+    e.code === "ArrowRight" ||
+    e.code === "PageUp" ||
+    e.code === "PageDown"
+  ) {
+    e.preventDefault();
+  }
+
+  if (e.code === "F3") {
+    e.preventDefault();
+    cycleControlMode();
+    showControlModeAnnouncement();
+    return;
+  }
+
   if (e.key === "Enter") {
     if (!state.started) startGame();
     else startNextWave(scene);
     return;
   }
 
-  if (e.key === "v" || e.key === "V") {
+  if (e.code === "KeyV") {
     startNextWave(scene);
     return;
   }
@@ -163,24 +303,43 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (e.key === "r" || e.key === "R") {
+  if (e.code === "KeyR") {
     restartGame(scene);
     return;
   }
 
-  if (e.key === "n" || e.key === "N") {
+  if (e.code === "KeyN") {
     toggleMute();
     return;
   }
 
-  if (e.key === "c" || e.key === "C") {
+  if (e.code === "KeyC") {
     toggleNameShowcaseCamera(camera);
     return;
   }
 
-  if (e.key === "h" || e.key === "H") {
-    if (e.shiftKey) spotLightHelper.visible = !spotLightHelper.visible;
-    else toggleHelp();
+  if (e.code === "KeyH") {
+    if (e.shiftKey) {
+      spotLightHelper.visible = !spotLightHelper.visible;
+    } else {
+      toggleHelp();
+    }
+
+    return;
+  }
+
+  if (e.code === "KeyI") {
+    toggleStageIntel();
+    return;
+  }
+
+  if (e.code === "KeyB") {
+    toggleAIFeedback();
+    return;
+  }
+
+  if (e.code === "F2") {
+    toggleAchievements();
     return;
   }
 
@@ -192,45 +351,49 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "4") state.selectedTowerType = "slow";
   if (e.key === "5") state.selectedTowerType = "splash";
 
-  if (e.key === "t" || e.key === "T") {
+  if (e.code === "KeyT") {
     placeTower(scene);
     return;
   }
 
-  if (e.key === "u" || e.key === "U") {
+  if (e.code === "KeyU") {
     upgradeSelectedTower();
     return;
   }
 
-  if (e.key === "f" || e.key === "F") {
+  if (e.code === "KeyF") {
     activateSelectedTowerUltimate(scene);
     return;
   }
 
-  if (e.key === "g" || e.key === "G") {
+  if (e.code === "KeyG") {
     cycleSelectedTowerTargetMode();
     return;
   }
 
-  if (e.key === "m" || e.key === "M") {
+  if (e.code === "KeyM") {
     toggleShaderMode(scene);
     return;
   }
 
-  if (e.key === "o" || e.key === "O") {
+  if (e.code === "KeyO") {
     spotLight.visible = !spotLight.visible;
+    return;
   }
 
-  if (e.key === "p" || e.key === "P") {
+  if (e.code === "KeyP") {
     directionalLight.visible = !directionalLight.visible;
+    return;
   }
 
   if (e.key === "+" || e.key === "=") {
-    spotLight.intensity = Math.min(8, spotLight.intensity + 0.25);
+    adjustActiveLightIntensity(spotLight, directionalLight, 0.25);
+    return;
   }
 
   if (e.key === "-" || e.key === "_") {
-    spotLight.intensity = Math.max(0, spotLight.intensity - 0.25);
+    adjustActiveLightIntensity(spotLight, directionalLight, -0.25);
+    return;
   }
 
   if (e.key === "Escape") {
@@ -347,6 +510,7 @@ function animate() {
     updateTacticalSignals(scene);
     updateTacticalOverlay(scene);
     updateCombo();
+    updateAchievements();
     cleanupEnemies(scene);
 
     updateHighlights();
@@ -368,6 +532,7 @@ function animate() {
     updatePathVisuals();
     updateTacticalSignals(scene);
     updateTacticalOverlay(scene);
+    updateAchievements();
 
     updateLights(spotLight, spotLightHelper, keys);
     updateDirectionalLight(directionalLight, keys);
@@ -378,6 +543,7 @@ function animate() {
   updateOverlay();
   updateMinimap();
   updateSelectedInfo();
+  updateControlStatus();
   updateAnnouncer();
   updateBossHud();
   updateWavePreview();
@@ -388,6 +554,7 @@ function animate() {
   updateWaveControls();
   updateEventLog();
 
+  updateLightControlVisuals(directionalLight, spotLight);
   updateSceneVisuals();
   updateCameraShake(camera);
 
@@ -395,10 +562,9 @@ function animate() {
 }
 
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  updateCameraProjection(camera);
+  resizeGameRenderer(renderer);
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
   postProcessing.resize(window.innerWidth, window.innerHeight);
 });
 

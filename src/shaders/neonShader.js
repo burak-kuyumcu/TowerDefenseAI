@@ -24,9 +24,9 @@ export const neonFragmentShader = `
   void main() {
     float glow = pow(vGlow, 1.55);
 
-    vec3 color = uColor * 0.55;
-    color += uColor * glow * 3.4;
-    color += uColor * 0.25;
+    vec3 color = uColor * 0.48;
+    color += uColor * glow * 3.25;
+    color += uColor * 0.2;
     color += uEmissive * uEmissiveIntensity;
 
     gl_FragColor = vec4(color, 1.0);

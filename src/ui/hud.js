@@ -8,6 +8,7 @@ import {
 import { getStageEffectText } from "../ai/stageInfo.js";
 import { getSelectedTowerUltimateText } from "../entities/towerUltimates.js";
 import { getTowerCount, getTowerLimit } from "../game/placement.js";
+import { getControlModeLabel } from "../systems/controls.js";
 
 export function updateHud() {
   setText("#score", state.score);
@@ -17,11 +18,16 @@ export function updateHud() {
 
   const currentStage = getCurrentStage();
   const stageEffect = getCurrentStageEffect();
+  const recommendedTowers = getRecommendedTowerTypes(stageEffect.id);
 
   setText("#stageName", currentStage.name);
   setText("#towerLimit", `${getTowerCount()} / ${getTowerLimit()}`);
-  setText("#stageEffect", formatStageEffect(stageEffect));
+
+  setText("#stageEffect", getStageEffectText());
   setText("#stageEffectShort", getStageEffectText());
+
+  updateStageIntel(currentStage, stageEffect, recommendedTowers);
+  updateRecommendedBuildButtons(recommendedTowers);
 
   setText("#ultimateStatus", getSelectedTowerUltimateText());
 
@@ -36,9 +42,75 @@ export function updateHud() {
   setText("#waveType", getWaveType());
   setText("#aiStrategy", getAIStrategyName());
   setText("#shaderMode", getShaderModeLabel());
+  setText("#controlMode", getControlModeLabel());
   setText("#audioStatus", state.muted ? "Muted" : "On");
 
   setText("#gameState", getGameStateLabel());
+}
+
+function updateStageIntel(stage, effect, recommendedTowers) {
+  if (!stage || !effect) return;
+
+  setText("#stageIntelName", stage.name);
+  setText("#stageIntelEffect", effect.label);
+  setText("#stageIntelDescription", effect.description);
+
+  setText("#stageEnemySpeed", formatMultiplier(effect.enemySpeedMultiplier));
+  setText("#stageEnemyHealth", formatMultiplier(effect.enemyHealthMultiplier));
+  setText("#stageTowerDamage", formatMultiplier(effect.towerDamageMultiplier));
+  setText("#stageGoldBonus", formatMultiplier(effect.goldMultiplier));
+  setText("#stageSpawnPressure", formatMultiplier(effect.spawnPressure));
+  setText("#stageSlowBonus", formatMultiplier(effect.slowBonus));
+
+  setText(
+    "#stageRecommendedTowers",
+    recommendedTowers.map(formatTowerType).join(" / ")
+  );
+}
+
+function updateRecommendedBuildButtons(recommendedTowers) {
+  const buttons = document.querySelectorAll(".build-button");
+
+  buttons.forEach((button) => {
+    const towerType = button.dataset.tower;
+
+    button.classList.toggle(
+      "recommended",
+      recommendedTowers.includes(towerType)
+    );
+  });
+}
+
+function getRecommendedTowerTypes(effectId) {
+  if (effectId === "forest_balance") {
+    return ["normal", "rapid"];
+  }
+
+  if (effectId === "canyon_wind") {
+    return ["rapid", "sniper"];
+  }
+
+  if (effectId === "frozen_chill") {
+    return ["slow", "sniper"];
+  }
+
+  if (effectId === "ancient_armor") {
+    return ["sniper", "splash"];
+  }
+
+  if (effectId === "lava_pressure") {
+    return ["sniper", "splash"];
+  }
+
+  if (effectId === "swamp_mud") {
+    return ["splash", "slow"];
+  }
+
+  if (effectId === "crystal_resonance") {
+    return ["sniper", "rapid"];
+  }
+
+  return ["normal", "rapid"];
 }
 
 function setText(selector, value) {
@@ -56,19 +128,6 @@ function getGameStateLabel() {
   if (state.waveActive) return "Wave Running";
 
   return "Preparing";
-}
-
-function formatStageEffect(effect) {
-  if (!effect) return "No Stage Effect";
-
-  const speed = formatMultiplier(effect.enemySpeedMultiplier);
-  const health = formatMultiplier(effect.enemyHealthMultiplier);
-  const damage = formatMultiplier(effect.towerDamageMultiplier);
-  const gold = formatMultiplier(effect.goldMultiplier);
-  const spawn = formatMultiplier(effect.spawnPressure);
-  const slow = formatMultiplier(effect.slowBonus);
-
-  return `${effect.label} | Enemy SPD ${speed} | Enemy HP ${health} | Tower DMG ${damage} | Gold ${gold} | Spawn ${spawn} | Slow ${slow}`;
 }
 
 function formatMultiplier(value = 1) {

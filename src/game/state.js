@@ -10,6 +10,9 @@ export const state = {
   currentPath: PATHS[0],
   stageVersion: 0,
 
+  controlMode: "camera",
+  freeTransformEnabled: false,
+
   aiLockedStrategy: "Balanced",
   aiDisplayedStrategy: "Balanced",
   aiLockedPlanText: "AI is waiting for analysis.",

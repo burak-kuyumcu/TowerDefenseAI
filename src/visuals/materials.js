@@ -46,6 +46,8 @@ export function toggleShaderMode(scene) {
   scene.traverse((object) => {
     if (!object.isMesh) return;
     if (object.userData?.baseColor === undefined) return;
+    if (object.userData?.isSelector) return;
+
     meshes.push(object);
   });
 
@@ -57,10 +59,34 @@ export function toggleShaderMode(scene) {
     mesh.material = createGameMaterial(color, role);
     mesh.material.needsUpdate = true;
 
-    oldMaterial?.dispose?.();
+    disposeMaterial(oldMaterial);
   }
 
-  console.log("Shader mode changed:", state.shaderMode);
+  console.log(`Shader mode changed: ${getShaderModeLabel()}`);
+}
+
+export function getShaderModeLabel() {
+  if (state.shaderMode === "toon") return "Toon";
+  if (state.shaderMode === "neon") return "Neon";
+  if (state.shaderMode === "xray") return "X-Ray / Scan";
+
+  return "Standard";
+}
+
+export function getShaderModeDescription() {
+  if (state.shaderMode === "toon") {
+    return "Full-screen toon shader with posterized colors and outlines.";
+  }
+
+  if (state.shaderMode === "neon") {
+    return "Full-screen neon shader with glow, scanlines and edge emphasis.";
+  }
+
+  if (state.shaderMode === "xray") {
+    return "Full-screen scan shader with cyan x-ray style edge detection.";
+  }
+
+  return "Standard physically based material rendering.";
 }
 
 function createStandardMaterial(color, role) {
@@ -68,10 +94,10 @@ function createStandardMaterial(color, role) {
 
   return new THREE.MeshStandardMaterial({
     color: baseColor,
-    emissive: 0x000000,
-    emissiveIntensity: role === "portal" || role === "base" ? 0.25 : 0,
-    roughness: 0.65,
-    metalness: role === "tower" || role === "base" ? 0.15 : 0.05
+    emissive: getStandardEmissive(role),
+    emissiveIntensity: getStandardEmission(role),
+    roughness: getRoughness(role),
+    metalness: getMetalness(role)
   });
 }
 
@@ -85,10 +111,17 @@ function createShaderMaterial(color, vertexShader, fragmentShader, options) {
     transparent: options.transparent,
     wireframe: options.wireframe,
     depthWrite: !options.transparent,
+    depthTest: true,
     uniforms: {
-      uColor: { value: baseColor },
-      uEmissive: { value: emissiveColor },
-      uEmissiveIntensity: { value: getRoleEmission(options.role) }
+      uColor: {
+        value: baseColor
+      },
+      uEmissive: {
+        value: emissiveColor
+      },
+      uEmissiveIntensity: {
+        value: getRoleEmission(options.role)
+      }
     }
   });
 
@@ -115,13 +148,30 @@ function getRoleAdjustedColor(color, role) {
     if (role === "decor") return new THREE.Color(0x64748b);
     if (role === "base") return new THREE.Color(0x38bdf8);
     if (role === "portal") return new THREE.Color(0xfb923c);
+    if (role === "tower") return new THREE.Color(0x67e8f9);
+    if (role === "enemy") return new THREE.Color(0xef4444);
+    if (role === "boss") return new THREE.Color(0xf97316);
+
     return new THREE.Color(0x67e8f9);
   }
 
   if (state.shaderMode === "neon") {
     if (role === "ground") return c.lerp(new THREE.Color(0x22c55e), 0.25);
     if (role === "path") return c.lerp(new THREE.Color(0xfacc15), 0.3);
+    if (role === "portal") return c.lerp(new THREE.Color(0xfb923c), 0.3);
+    if (role === "base") return c.lerp(new THREE.Color(0x38bdf8), 0.35);
+    if (role === "enemy" || role === "boss") {
+      return c.lerp(new THREE.Color(0xef4444), 0.2);
+    }
+
     return c.lerp(new THREE.Color(0xffffff), 0.15);
+  }
+
+  if (state.shaderMode === "toon") {
+    if (role === "path") return c.lerp(new THREE.Color(0xfacc15), 0.1);
+    if (role === "ground") return c.lerp(new THREE.Color(0x22c55e), 0.08);
+
+    return c;
   }
 
   return c;
@@ -130,28 +180,71 @@ function getRoleAdjustedColor(color, role) {
 function getRoleEmission(role) {
   if (state.shaderMode === "neon") {
     if (role === "tower" || role === "enemy") return 0.45;
+    if (role === "boss") return 0.75;
     if (role === "base" || role === "portal") return 0.7;
     if (role === "path") return 0.25;
+
     return 0.08;
   }
 
   if (state.shaderMode === "xray") {
     if (role === "tower" || role === "enemy") return 0.65;
+    if (role === "boss") return 0.85;
     if (role === "base" || role === "portal") return 0.8;
     if (role === "path") return 0.35;
+
     return 0.12;
   }
 
+  if (state.shaderMode === "toon") {
+    if (role === "portal" || role === "base") return 0.16;
+
+    return 0;
+  }
+
   return 0;
+}
+
+function getStandardEmissive(role) {
+  if (role === "portal") return new THREE.Color(0x7c2d12);
+  if (role === "base") return new THREE.Color(0x0f172a);
+
+  return new THREE.Color(0x000000);
+}
+
+function getStandardEmission(role) {
+  if (role === "portal" || role === "base") return 0.25;
+
+  return 0;
+}
+
+function getRoughness(role) {
+  if (role === "tower" || role === "base") return 0.48;
+  if (role === "portal") return 0.42;
+  if (role === "path") return 0.72;
+  if (role === "ground") return 0.82;
+
+  return 0.65;
+}
+
+function getMetalness(role) {
+  if (role === "tower" || role === "base") return 0.18;
+  if (role === "portal") return 0.12;
+
+  return 0.05;
 }
 
 function shouldUseWireframe(role) {
   return role === "tower" || role === "enemy" || role === "boss";
 }
 
-export function getShaderModeLabel() {
-  if (state.shaderMode === "toon") return "Toon";
-  if (state.shaderMode === "neon") return "Neon";
-  if (state.shaderMode === "xray") return "X-Ray";
-  return "Standard";
+function disposeMaterial(material) {
+  if (!material) return;
+
+  if (Array.isArray(material)) {
+    material.forEach((item) => item.dispose?.());
+    return;
+  }
+
+  material.dispose?.();
 }

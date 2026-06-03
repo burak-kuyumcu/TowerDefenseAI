@@ -21,6 +21,7 @@
       <div>Ultimate: <span id="ultimateStatus">-</span></div>
       <div>AI Strategy: <span id="aiStrategy">Balanced</span></div>
       <div>Shader Mode: <span id="shaderMode">Standard</span></div>
+      <div>Control Mode: <span id="controlMode">Camera 6DOF</span></div>
       <div id="gameState">Running</div>
       <div>Audio: <span id="audioStatus">On</span></div>
       <div>Combo: <span id="combo">-</span></div>
@@ -28,22 +29,90 @@
       <div>Stage Effect: <span id="stageEffect">Balanced Terrain</span></div>
     </div>
 
-    <div id="help">
+    <div id="stageIntelPanel" class="hidden">
+      <div class="stage-intel-title">Stage Intel</div>
+
+      <div class="stage-intel-stage">
+        <span id="stageIntelName">Forest Route</span>
+      </div>
+
+      <div class="stage-intel-effect">
+        <span id="stageIntelEffect">Forest Balance</span>
+      </div>
+
+      <div id="stageIntelDescription">
+        No harsh modifier. This stage is designed as the baseline.
+      </div>
+
+      <div class="stage-intel-grid">
+        <div>
+          <span>Enemy SPD</span>
+          <b id="stageEnemySpeed">x1.00</b>
+        </div>
+
+        <div>
+          <span>Enemy HP</span>
+          <b id="stageEnemyHealth">x1.00</b>
+        </div>
+
+        <div>
+          <span>Tower DMG</span>
+          <b id="stageTowerDamage">x1.00</b>
+        </div>
+
+        <div>
+          <span>Gold</span>
+          <b id="stageGoldBonus">x1.00</b>
+        </div>
+
+        <div>
+          <span>Spawn</span>
+          <b id="stageSpawnPressure">x1.00</b>
+        </div>
+
+        <div>
+          <span>Slow</span>
+          <b id="stageSlowBonus">x1.00</b>
+        </div>
+      </div>
+
+      <div class="stage-intel-recommendation">
+        <span>Recommended:</span>
+        <b id="stageRecommendedTowers">Normal / Rapid</b>
+      </div>
+    </div>
+
+    <div id="help" class="hidden">
       <div><b>Controls</b></div>
 
       <div><b>Game</b></div>
-      <div>Enter: Start game / Start next wave</div>
+      <div>Enter: Start / next wave</div>
       <div>V: Start next wave</div>
       <div>Space: Pause / Resume</div>
       <div>R: Restart game</div>
       <div>N: Mute / Unmute</div>
       <div>H: Show / Hide help</div>
+      <div>I: Show / Hide stage intel</div>
+      <div>F2: Show / Hide achievements</div>
+      <div>B: Show / Hide AI analysis</div>
       <div>C: Show / Hide 3D name showcase</div>
+      <div>F3: Cycle control mode</div>
+
+      <br />
+
+      <div><b>Control Modes</b></div>
+      <div>F3 cycles through:</div>
+      <div>Camera 6DOF</div>
+      <div>Object 6DOF</div>
+      <div>Spotlight Control</div>
+      <div>Directional Light</div>
 
       <br />
 
       <div><b>Building & Selection</b></div>
       <div>Mouse Move: Select tile</div>
+      <div>Green tile: buildable</div>
+      <div>Red tile: blocked/path/occupied</div>
       <div>Left Click Empty Tile: Place tower</div>
       <div>Left Click Object: Select object</div>
       <div>Right Click Tower: Sell tower</div>
@@ -52,15 +121,6 @@
       <div>F: Use selected tower ultimate</div>
       <div>G: Change selected tower target mode</div>
       <div>Esc: Deselect object</div>
-
-      <br />
-
-      <div><b>Tower Ultimates</b></div>
-      <div>Normal: Focus Burst</div>
-      <div>Rapid: Overdrive</div>
-      <div>Sniper: Piercing Shot</div>
-      <div>Slow: Freeze Field</div>
-      <div>Splash: Meteor Blast</div>
 
       <br />
 
@@ -73,18 +133,62 @@
 
       <br />
 
-      <div><b>Camera</b></div>
-      <div>W/A/S/D: Translate camera</div>
-      <div>Q/E: Move camera up/down</div>
-      <div>Arrow Keys: Rotate camera</div>
-      <div>Arrow Keys + selected tower during preparation: Relocate tower</div>
+      <div><b>Tower Ultimates</b></div>
+      <div>Normal: Focus Burst</div>
+      <div>Rapid: Overdrive</div>
+      <div>Sniper: Piercing Shot</div>
+      <div>Slow: Freeze Field</div>
+      <div>Splash: Meteor Blast</div>
 
       <br />
 
-      <div><b>Selected Object 3D Rotation</b></div>
-      <div>Shift + J/L: Yaw selected tower</div>
-      <div>Shift + I/K: Pitch selected tower</div>
-      <div>Shift + Z/X: Roll selected tower</div>
+      <div><b>Camera Mode - 6DOF</b></div>
+      <div>F3 until Camera 6DOF mode</div>
+      <div>W/A/S/D: Move camera on X/Z</div>
+      <div>Q/E: Move camera up/down</div>
+      <div>Arrow Left/Right: Camera yaw</div>
+      <div>Arrow Up/Down: Camera pitch</div>
+      <div>PageUp/PageDown: Camera roll</div>
+      <div>Shift: Faster movement/rotation</div>
+
+      <br />
+
+      <div><b>Object Mode - 6DOF</b></div>
+      <div>Select a tower, enemy, or showcase object with mouse</div>
+      <div>F3 until Object 6DOF mode</div>
+      <div>W/A/S/D: Move selected object on X/Z</div>
+      <div>Q/E: Move selected object up/down</div>
+      <div>Arrow Left/Right: Rotate yaw</div>
+      <div>Arrow Up/Down: Rotate pitch</div>
+      <div>PageUp/PageDown: Rotate roll</div>
+      <div>Shift: Faster transform</div>
+      <div>Preparation mode: Shift + Arrow Keys relocate tower on grid</div>
+
+      <br />
+
+      <div><b>Spotlight Mode</b></div>
+      <div>F3 until Spotlight Control mode</div>
+      <div>O: Spotlight on/off</div>
+      <div>Shift + H: Spotlight helper</div>
+      <div>W/A/S/D: Move spotlight on X/Z</div>
+      <div>Q/E: Move spotlight up/down</div>
+      <div>Arrow Keys: Aim spotlight target X/Z</div>
+      <div>PageUp/PageDown: Aim spotlight target Y</div>
+      <div>+/-: Spotlight intensity</div>
+      <div>Blue ring: Spotlight target marker</div>
+
+      <br />
+
+      <div><b>Directional Light Mode</b></div>
+      <div>F3 until Directional Light mode</div>
+      <div>P: Directional light on/off</div>
+      <div>Arrow Left/Right: Direction yaw</div>
+      <div>Arrow Up/Down: Direction pitch</div>
+      <div>PageUp/PageDown: Direction roll value</div>
+      <div>Alt + W/A/S/D: Move directional light on X/Z</div>
+      <div>Alt + Q/E: Move directional light up/down</div>
+      <div>+/-: Directional light intensity</div>
+      <div>Yellow arrow: Directional light direction helper</div>
 
       <br />
 
@@ -92,26 +196,9 @@
       <div>M: Change shader mode</div>
       <div>Standard: Normal render</div>
       <div>Toon: Full-screen cartoon shader</div>
-      <div>Neon/X-Ray: Show tactical tower ranges</div>
+      <div>Neon: Full-screen glow shader</div>
+      <div>X-Ray: Full-screen tactical scan shader</div>
       <div>X-Ray + selected tower: Show relocation hints</div>
-
-      <br />
-
-      <div><b>Spotlight</b></div>
-      <div>O: Toggle spotlight</div>
-      <div>Shift + H: Toggle spotlight helper</div>
-      <div>I/K/J/L: Move spotlight on Z/X axes</div>
-      <div>Y/U: Spotlight up/down</div>
-      <div>Alt + Arrow Keys: Aim spotlight target</div>
-      <div>+/-: Spotlight intensity</div>
-
-      <br />
-
-      <div><b>Directional Light</b></div>
-      <div>P: Toggle directional light</div>
-      <div>7/8: Move directional light left/right</div>
-      <div>9/0: Move directional light forward/back</div>
-      <div>[ / ]: Move directional light down/up</div>
     </div>
 
     <div id="overlay">
@@ -126,6 +213,14 @@
 
     <div id="announcer"></div>
 
+    <div id="controlStatusPanel">
+      <div class="control-status-title">Control Mode</div>
+      <div id="controlStatusMode">Camera 6DOF</div>
+      <div id="controlStatusHelp">
+        W/A/S/D: Move camera | Q/E: Up/Down | Arrows: Rotate | PageUp/PageDown: Roll
+      </div>
+    </div>
+
     <canvas id="minimap" width="180" height="180"></canvas>
 
     <div id="actionPanel">
@@ -136,6 +231,13 @@
     </div>
 
     <button id="settingsButton">⚙️</button>
+
+    <div id="quickPanelButtons">
+      <button id="quickHelpButton" title="Controls">?</button>
+      <button id="quickStageButton" title="Stage Intel">Stage</button>
+      <button id="quickAchievementsButton" title="Achievements">Awards</button>
+      <button id="quickAIButton" title="AI Analysis">AI</button>
+    </div>
 
     <div id="settingsPanel" class="hidden">
       <div class="settings-card">
@@ -149,8 +251,26 @@
         <div class="settings-about">
           <b>About Game</b>
           <p>
-            Tower Defense AI is a 3D strategy game where the enemy AI adapts to your tower choices.
+            Tower Defense AI is a WebGL2 3D strategy game where the enemy AI
+            adapts to your tower choices, stage modifiers, and defensive
+            patterns.
           </p>
+
+          <div class="requirement-proof">
+            <div><b>Project:</b> AI & Games - Learning to Play</div>
+            <div><b>Theme:</b> Tower Defense AI</div>
+            <div><b>Student:</b> Aydın Burak Kuyumcu</div>
+            <div><b>Rendering:</b> WebGL2 + JavaScript + GLSL + HTML</div>
+            <div><b>Camera:</b> 6DOF translation and rotation</div>
+            <div><b>Objects:</b> selectable 3D transform showcase objects</div>
+            <div><b>Lights:</b> directional light + independent spotlight</div>
+            <div>
+              <b>Shaders:</b> full-screen Toon, Neon, and X-Ray/Scan GLSL
+              shaders
+            </div>
+            <div><b>Name Scene:</b> 3D object-built name showcase</div>
+            <div><b>AI:</b> adaptive wave strategy and stage-aware planning</div>
+          </div>
         </div>
 
         <button id="settingsCloseButton">Close</button>
@@ -199,9 +319,14 @@
       <div id="eventLogContent"></div>
     </div>
 
-    <div id="aiFeedback">
+    <div id="aiFeedback" class="hidden">
       <div class="ai-feedback-title">AI Analysis</div>
       <div id="aiFeedbackContent">Waiting for scan...</div>
+    </div>
+
+    <div id="achievementPanel" class="hidden">
+      <div class="achievement-title">Achievements</div>
+      <div id="achievementContent"></div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

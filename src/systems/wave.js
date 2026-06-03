@@ -21,6 +21,10 @@ import {
 } from "../game/stages.js";
 import { refundAndClearTowersForStageChange } from "../systems/stageCleanup.js";
 import { getStageEffectText } from "../ai/stageInfo.js";
+import {
+  registerWaveStarted,
+  registerWaveCleared
+} from "../systems/achievements.js";
 
 let initialized = false;
 
@@ -82,6 +86,8 @@ export function startNextWave(scene) {
   state.waveActive = true;
   state.waitingForNextWave = false;
 
+  registerWaveStarted();
+
   if (aiStart.bluffApplied) {
     showAnnouncement(`🎭 AI BLUFF REVEALED: ${aiStart.strategy}`);
     addEventLog(
@@ -127,6 +133,10 @@ export function updateWave(scene) {
 function completeWave(scene, completedWaveWasBoss) {
   const baseBonusGold = completedWaveWasBoss ? 60 : 20;
   const bonusGold = getStageBonusGold(baseBonusGold);
+
+  registerWaveCleared({
+    wasBossWave: completedWaveWasBoss
+  });
 
   recordWaveResult();
   state.gold += bonusGold;

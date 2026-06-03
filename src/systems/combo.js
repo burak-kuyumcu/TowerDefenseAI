@@ -1,5 +1,6 @@
 import { state } from "../game/state.js";
 import { addEventLog } from "../ui/eventLog.js";
+import { registerComboMilestone } from "./achievements.js";
 
 export function registerKill(baseScore = 10) {
   state.combo++;
@@ -9,6 +10,8 @@ export function registerKill(baseScore = 10) {
   const totalScore = baseScore + comboBonus;
 
   state.score += totalScore;
+
+  registerComboMilestone(state.combo);
 
   if (state.combo === 3) {
     addEventLog("Combo x3!");

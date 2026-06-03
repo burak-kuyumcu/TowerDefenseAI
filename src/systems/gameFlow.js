@@ -2,6 +2,9 @@ import { state } from "../game/state.js";
 import { removeHealthBar } from "../visuals/healthBars.js";
 import { removeTowerLabel } from "../visuals/towerLabels.js";
 import { analyzeAndLockAIPlan } from "../ai/aiDirector.js";
+import { resetAchievementsRuntimeTracking } from "./achievements.js";
+import { resetStageProgression } from "../game/stages.js";
+import { getActivePathPoints } from "../core/constants.js";
 
 export function startGame() {
   state.started = true;
@@ -9,6 +12,8 @@ export function startGame() {
   state.waitingForNextWave = true;
   state.waveActive = false;
   state.relocationTokens = state.relocationMaxTokens;
+
+  resetAchievementsRuntimeTracking();
 
   analyzeAndLockAIPlan();
 }
@@ -35,29 +40,16 @@ export function restartGame(scene) {
     scene.remove(projectile);
   }
 
+  resetStageProgression();
+
   state.selectedTile = { x: -4, z: -4 };
   state.selectedTowerType = "normal";
+
   state.selectedObject = null;
-  state.shaderMode = "standard";
+  state.hoveredObject = null;
 
-  state.started = true;
-  state.paused = false;
-  state.waveActive = false;
-  state.waitingForNextWave = true;
-
-  state.relocationTokens = state.relocationMaxTokens;
-
-  state.score = 0;
-  state.gold = 100;
-  state.wave = 1;
-  state.baseHp = 10;
-  state.baseMaxHp = 10;
-  state.gameOver = false;
-
-  state.aiMemory.lastStrategy = null;
-  state.aiMemory.successScore = 0;
-  state.aiMemory.previousBaseHp = state.baseHp;
-  state.aiMemory.lastDamageDealt = 0;
+  state.currentPath = getActivePathPoints();
+  state.stageVersion++;
 
   state.aiLockedStrategy = "Balanced";
   state.aiDisplayedStrategy = "Balanced";
@@ -65,6 +57,29 @@ export function restartGame(scene) {
   state.aiBluffActive = false;
   state.aiBluffFrom = null;
   state.aiBluffTo = null;
+
+  state.aiMemory.lastStrategy = null;
+  state.aiMemory.successScore = 0;
+  state.aiMemory.previousBaseHp = 10;
+  state.aiMemory.lastDamageDealt = 0;
+
+  state.shaderMode = "standard";
+  state.paused = false;
+  state.muted = state.muted;
+  state.started = true;
+
+  state.waveActive = false;
+  state.waitingForNextWave = true;
+
+  state.relocationTokens = state.relocationMaxTokens;
+  state.relocationMoveCooldown = 0;
+
+  state.score = 0;
+  state.gold = 100;
+  state.wave = 1;
+  state.baseHp = 10;
+  state.baseMaxHp = 10;
+  state.gameOver = false;
 
   state.combo = 0;
   state.comboTimer = 0;
@@ -78,6 +93,12 @@ export function restartGame(scene) {
   state.projectiles.length = 0;
 
   state.towerSet.clear();
+
+  if (state.terrainBlockedSet) {
+    state.terrainBlockedSet.clear();
+  }
+
+  resetAchievementsRuntimeTracking();
 
   analyzeAndLockAIPlan();
 }
