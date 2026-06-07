@@ -1,37 +1,54 @@
 import * as THREE from "three";
 import { createGameMaterial } from "./materials.js";
+import { state } from "../game/state.js";
 
+let showcaseGroup = null;
 let showcaseObjects = [];
+let labelSprite = null;
 
 export function initTransformShowcase(scene) {
   clearTransformShowcase(scene);
 
-  const group = new THREE.Group();
-  group.name = "Transform Showcase Zone";
-  group.position.set(-13.5, 0, 12.5);
+  showcaseGroup = new THREE.Group();
+  showcaseGroup.name = "Transform Showcase Zone";
+  showcaseGroup.userData.isTransformShowcase = true;
+  showcaseGroup.userData.preserveOnStageRebuild = true;
+
+  // Separate 3D object lab placed outside the main battlefield.
+  showcaseGroup.position.set(-9.4, 0.18, 15.4);
 
   const platform = createShowcasePlatform();
-  group.add(platform);
+  showcaseGroup.add(platform);
 
   const drone = createTrainingDrone();
-  drone.position.set(-1.6, 0.25, 0);
-  group.add(drone);
+  drone.position.set(-1.7, 0.42, 0);
+  drone.userData.baseY = drone.position.y;
+  showcaseGroup.add(drone);
 
   const crystal = createTrainingCrystal();
-  crystal.position.set(0, 0.45, 0);
-  group.add(crystal);
+  crystal.position.set(0, 0.62, 0);
+  crystal.userData.baseY = crystal.position.y;
+  showcaseGroup.add(crystal);
 
   const crate = createCommandCrate();
-  crate.position.set(1.6, 0.28, 0);
-  group.add(crate);
+  crate.position.set(1.7, 0.44, 0);
+  crate.userData.baseY = crate.position.y;
+  showcaseGroup.add(crate);
 
   const beacon = createBeacon();
   beacon.position.set(0, 0.08, -1.15);
-  group.add(beacon);
+  showcaseGroup.add(beacon);
 
-  group.userData.isStageDecoration = false;
+  const rails = createShowcaseRails();
+  showcaseGroup.add(rails);
 
-  scene.add(group);
+  labelSprite = createTextSprite("6DOF Transform Test");
+  labelSprite.position.set(0, 1.95, -1.25);
+  showcaseGroup.add(labelSprite);
+
+  markPreservedTree(showcaseGroup);
+
+  scene.add(showcaseGroup);
 
   showcaseObjects = [drone, crystal, crate];
 
@@ -42,23 +59,54 @@ export function getTransformShowcaseObjects() {
   return showcaseObjects;
 }
 
-function clearTransformShowcase(scene) {
-  if (showcaseObjects.length === 0) return;
+export function updateTransformShowcase(camera) {
+  if (!showcaseGroup) return;
 
-  const parent = showcaseObjects[0].parent;
+  for (const object of showcaseObjects) {
+    if (!object.userData.floatOffset) continue;
 
-  if (parent) {
-    scene.remove(parent);
+    const isSelected = state.selectedObject === object;
+    const isObjectMode = state.controlMode === "object";
+
+    /*
+      Object 6DOF modunda seçili objenin Y pozisyonunu bobbing animasyonu
+      ezmesin. Q/E ile yukarı-aşağı taşıdığımız değeri yeni baseY olarak
+      kaydediyoruz. Böylece objeyi bırakınca eski yüksekliğe zıplamıyor.
+    */
+    if (isSelected && isObjectMode) {
+      object.userData.baseY = object.position.y;
+      object.userData.floatTime = 0;
+      continue;
+    }
+
+    object.userData.floatTime += 0.018;
+
+    const bob =
+      Math.sin(object.userData.floatTime + object.userData.floatOffset) * 0.035;
+
+    object.position.y = object.userData.baseY + bob;
   }
 
+  if (labelSprite && camera) {
+    labelSprite.quaternion.copy(camera.quaternion);
+  }
+}
+
+function clearTransformShowcase(scene) {
+  if (showcaseGroup) {
+    scene.remove(showcaseGroup);
+  }
+
+  showcaseGroup = null;
   showcaseObjects = [];
+  labelSprite = null;
 }
 
 function createShowcasePlatform() {
   const group = new THREE.Group();
 
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(5.4, 0.18, 2.6),
+    new THREE.BoxGeometry(5.8, 0.2, 2.8),
     createGameMaterial(0x0f172a, "base")
   );
 
@@ -67,30 +115,83 @@ function createShowcasePlatform() {
   base.receiveShadow = true;
 
   const trim = new THREE.Mesh(
-    new THREE.BoxGeometry(5.7, 0.08, 2.9),
+    new THREE.BoxGeometry(6.05, 0.09, 3.05),
     createGameMaterial(0x38bdf8, "base")
   );
 
-  trim.position.y = -0.07;
+  trim.position.y = -0.08;
   trim.castShadow = true;
   trim.receiveShadow = true;
 
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(5.2, 2.3),
+    createGameMaterial(0x12203a, "ground")
+  );
+
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.145;
+  floor.receiveShadow = true;
+
+  const markerA = createMarkerRing(0x22c55e);
+  markerA.position.set(-1.7, 0.19, 0);
+
+  const markerB = createMarkerRing(0xc084fc);
+  markerB.position.set(0, 0.19, 0);
+
+  const markerC = createMarkerRing(0xfacc15);
+  markerC.position.set(1.7, 0.19, 0);
+
+  group.add(trim, base, floor, markerA, markerB, markerC);
+
+  return group;
+}
+
+function createMarkerRing(color) {
   const marker = new THREE.Mesh(
-    new THREE.RingGeometry(0.72, 0.86, 48),
-    createGameMaterial(0xfacc15, "base")
+    new THREE.RingGeometry(0.48, 0.6, 48),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
   );
 
   marker.rotation.x = -Math.PI / 2;
-  marker.position.y = 0.13;
+  marker.renderOrder = 55;
 
-  if (marker.material) {
-    marker.material.transparent = true;
-    marker.material.opacity = 0.38;
-    marker.material.depthWrite = false;
-    marker.material.side = THREE.DoubleSide;
-  }
+  return marker;
+}
 
-  group.add(trim, base, marker);
+function createShowcaseRails() {
+  const group = new THREE.Group();
+
+  const railMaterial = createGameMaterial(0x38bdf8, "base");
+
+  const front = new THREE.Mesh(
+    new THREE.BoxGeometry(5.65, 0.08, 0.08),
+    railMaterial
+  );
+
+  front.position.set(0, 0.22, 1.24);
+  front.castShadow = true;
+
+  const back = front.clone();
+  back.position.z = -1.24;
+
+  const left = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.08, 2.55),
+    railMaterial
+  );
+
+  left.position.set(-2.85, 0.22, 0);
+  left.castShadow = true;
+
+  const right = left.clone();
+  right.position.x = 2.85;
+
+  group.add(front, back, left, right);
 
   return group;
 }
@@ -126,11 +227,23 @@ function createTrainingDrone() {
   const wingRight = wingLeft.clone();
   wingRight.position.x = 0.42;
 
-  group.add(body, core, wingLeft, wingRight);
+  const rotor = new THREE.Mesh(
+    new THREE.TorusGeometry(0.36, 0.025, 8, 32),
+    createGameMaterial(0x38bdf8, "portal")
+  );
+
+  rotor.rotation.x = Math.PI / 2;
+  rotor.position.y = 0.16;
+  rotor.castShadow = true;
+
+  group.add(body, core, wingLeft, wingRight, rotor);
 
   prepareTransformableObject(group, {
     name: "Training Drone",
-    type: "showcase-drone"
+    type: "showcase-drone",
+    baseColor: 0x60a5fa,
+    baseY: 0.42,
+    floatOffset: 0.1
   });
 
   return group;
@@ -158,11 +271,23 @@ function createTrainingCrystal() {
   base.castShadow = true;
   base.receiveShadow = true;
 
-  group.add(crystal, base);
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.55, 0.025, 8, 40),
+    createGameMaterial(0x7dd3fc, "portal")
+  );
+
+  halo.rotation.x = Math.PI / 2;
+  halo.position.y = 0.24;
+  halo.castShadow = true;
+
+  group.add(crystal, base, halo);
 
   prepareTransformableObject(group, {
     name: "Energy Crystal",
-    type: "showcase-crystal"
+    type: "showcase-crystal",
+    baseColor: 0xc084fc,
+    baseY: 0.62,
+    floatOffset: 1.3
   });
 
   return group;
@@ -199,11 +324,23 @@ function createCommandCrate() {
   antenna.position.set(0.26, 0.45, 0.18);
   antenna.castShadow = true;
 
-  group.add(crate, bandA, bandB, antenna);
+  const dish = new THREE.Mesh(
+    new THREE.ConeGeometry(0.16, 0.18, 16),
+    createGameMaterial(0x38bdf8, "base")
+  );
+
+  dish.rotation.x = Math.PI / 2;
+  dish.position.set(0.26, 0.76, 0.18);
+  dish.castShadow = true;
+
+  group.add(crate, bandA, bandB, antenna, dish);
 
   prepareTransformableObject(group, {
     name: "Command Crate",
-    type: "showcase-crate"
+    type: "showcase-crate",
+    baseColor: 0x92400e,
+    baseY: 0.44,
+    floatOffset: 2.4
   });
 
   return group;
@@ -237,8 +374,12 @@ function prepareTransformableObject(object, data) {
   object.userData.isTransformable = true;
   object.userData.name = data.name;
   object.userData.type = data.type;
-  object.userData.baseColor = 0x38bdf8;
+  object.userData.baseColor = data.baseColor;
   object.userData.shaderRole = "tower";
+  object.userData.baseY = data.baseY;
+  object.userData.floatOffset = data.floatOffset;
+  object.userData.floatTime = 0;
+  object.userData.preserveOnStageRebuild = true;
 
   object.traverse((child) => {
     if (!child.isMesh) return;
@@ -247,5 +388,77 @@ function prepareTransformableObject(object, data) {
     child.userData.baseColor =
       child.material?.color?.getHex?.() ?? object.userData.baseColor;
     child.userData.shaderRole = child.userData.shaderRole ?? "tower";
+    child.userData.preserveOnStageRebuild = true;
   });
+}
+
+function createTextSprite(text) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+
+  const context = canvas.getContext("2d");
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "rgba(8, 15, 30, 0.86)";
+  roundRect(context, 16, 18, 480, 84, 18);
+  context.fill();
+
+  context.strokeStyle = "rgba(56, 189, 248, 0.95)";
+  context.lineWidth = 4;
+  roundRect(context, 16, 18, 480, 84, 18);
+  context.stroke();
+
+  context.font = "bold 34px Arial";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "#facc15";
+  context.fillText(text, 256, 60);
+
+  context.font = "bold 18px Arial";
+  context.fillStyle = "#bae6fd";
+  context.fillText("Select objects and press F3 for Object 6DOF", 256, 92);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false
+  });
+
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(4.2, 1.05, 1);
+  sprite.userData.preserveOnStageRebuild = true;
+
+  return sprite;
+}
+
+function markPreservedTree(root) {
+  root.userData.preserveOnStageRebuild = true;
+
+  root.traverse((child) => {
+    child.userData.preserveOnStageRebuild = true;
+  });
+}
+
+function roundRect(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(
+    x + width,
+    y + height,
+    x + width - radius,
+    y + height
+  );
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
 }

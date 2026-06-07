@@ -1,9 +1,15 @@
 import * as THREE from "three";
 import { state } from "../game/state.js";
 import { tryRelocateTower, canRelocateNow } from "./relocation.js";
-import { ensureDirectionalFocus } from "./directionalFocus.js";
+import {
+  ensureDirectionalFocus,
+  rotateTowerFocus
+} from "./directionalFocus.js";
 
 const CONTROL_MODES = ["camera", "object", "spotlight", "directional"];
+
+const RELOCATION_COOLDOWN_FRAMES = 12;
+const FOCUS_ROTATION_COOLDOWN_FRAMES = 2;
 
 function isDown(keys, ...names) {
   return names.some((name) => keys[name]);
@@ -13,12 +19,26 @@ function isShiftDown(keys) {
   return isDown(keys, "Shift", "ShiftLeft", "ShiftRight");
 }
 
-function isAltDown(keys) {
-  return isDown(keys, "Alt", "AltLeft", "AltRight");
+function isAnyArrowDown(keys) {
+  return (
+    isDown(keys, "ArrowLeft") ||
+    isDown(keys, "ArrowRight") ||
+    isDown(keys, "ArrowUp") ||
+    isDown(keys, "ArrowDown")
+  );
 }
 
 function getSelectedObject() {
   return state.selectedObject;
+}
+
+function getSelectedTower() {
+  const selected = getSelectedObject();
+
+  if (!selected) return null;
+  if (!state.towers.includes(selected)) return null;
+
+  return selected;
 }
 
 function isTransformableObject(object) {
@@ -28,6 +48,17 @@ function isTransformableObject(object) {
   if (state.enemies.includes(object)) return true;
 
   return object.userData?.isTransformable === true;
+}
+
+function shouldReserveArrowsForTowerControls(keys) {
+  const selectedTower = getSelectedTower();
+
+  if (!selectedTower) return false;
+  if (!isAnyArrowDown(keys)) return false;
+
+  if (isShiftDown(keys)) return true;
+
+  return canRelocateNow();
 }
 
 export function cycleControlMode() {
@@ -112,6 +143,10 @@ export function updateCamera(camera, keys) {
     maxCameraY
   );
 
+  if (shouldReserveArrowsForTowerControls(keys)) {
+    return;
+  }
+
   if (isDown(keys, "ArrowLeft")) {
     camera.rotation.y += rotateSpeed;
   }
@@ -162,6 +197,8 @@ export function updateLights(spotLight, spotLightHelper, keys) {
     if (isDown(keys, "ArrowDown")) spotLight.target.position.z += aimSpeed;
     if (isDown(keys, "PageUp")) spotLight.target.position.y += aimSpeed;
     if (isDown(keys, "PageDown")) spotLight.target.position.y -= aimSpeed;
+
+    spotLight.target.position.y = Math.max(0, spotLight.target.position.y);
   }
 
   spotLightHelper.update();
@@ -170,62 +207,126 @@ export function updateLights(spotLight, spotLightHelper, keys) {
 export function updateDirectionalLight(directionalLight, keys) {
   if (state.controlMode !== "directional") return;
 
-  initDirectionalLightControlData(directionalLight);
+  const moveSpeed = isShiftDown(keys) ? 0.24 : 0.13;
+  const rotateSpeed = isShiftDown(keys) ? 0.045 : 0.025;
 
-  const moveSpeed = isShiftDown(keys) ? 0.22 : 0.12;
-  const angleSpeed = isShiftDown(keys) ? 0.045 : 0.025;
+  const target = getDirectionalTargetPosition(directionalLight);
 
-  if (isAltDown(keys)) {
-    if (isDown(keys, "w", "W", "KeyW")) {
-      directionalLight.position.z -= moveSpeed;
-    }
+  let changed = false;
 
-    if (isDown(keys, "s", "S", "KeyS")) {
-      directionalLight.position.z += moveSpeed;
-    }
-
-    if (isDown(keys, "a", "A", "KeyA")) {
-      directionalLight.position.x -= moveSpeed;
-    }
-
-    if (isDown(keys, "d", "D", "KeyD")) {
-      directionalLight.position.x += moveSpeed;
-    }
-
-    if (isDown(keys, "q", "Q", "KeyQ")) {
-      directionalLight.position.y += moveSpeed;
-    }
-
-    if (isDown(keys, "e", "E", "KeyE")) {
-      directionalLight.position.y -= moveSpeed;
-    }
-
-    directionalLight.position.y = Math.max(0.5, directionalLight.position.y);
-    directionalLight.lookAt(0, 0, 0);
-
-    return;
+  if (isDown(keys, "w", "W", "KeyW")) {
+    directionalLight.position.z -= moveSpeed;
+    changed = true;
   }
 
-  const data = directionalLight.userData.control;
+  if (isDown(keys, "s", "S", "KeyS")) {
+    directionalLight.position.z += moveSpeed;
+    changed = true;
+  }
 
-  if (isDown(keys, "ArrowLeft")) data.yaw -= angleSpeed;
-  if (isDown(keys, "ArrowRight")) data.yaw += angleSpeed;
-  if (isDown(keys, "ArrowUp")) data.pitch += angleSpeed;
-  if (isDown(keys, "ArrowDown")) data.pitch -= angleSpeed;
-  if (isDown(keys, "PageUp")) data.roll += angleSpeed;
-  if (isDown(keys, "PageDown")) data.roll -= angleSpeed;
+  if (isDown(keys, "a", "A", "KeyA")) {
+    directionalLight.position.x -= moveSpeed;
+    changed = true;
+  }
 
-  data.pitch = THREE.MathUtils.clamp(data.pitch, -1.2, 1.2);
+  if (isDown(keys, "d", "D", "KeyD")) {
+    directionalLight.position.x += moveSpeed;
+    changed = true;
+  }
 
-  const radius = data.radius;
-  const x = Math.cos(data.pitch) * Math.sin(data.yaw) * radius;
-  const y = Math.sin(data.pitch) * radius + 7;
-  const z = Math.cos(data.pitch) * Math.cos(data.yaw) * radius;
+  if (isDown(keys, "q", "Q", "KeyQ")) {
+    directionalLight.position.y += moveSpeed;
+    changed = true;
+  }
 
-  directionalLight.position.set(x, y, z);
-  directionalLight.lookAt(0, 0, 0);
+  if (isDown(keys, "e", "E", "KeyE")) {
+    directionalLight.position.y -= moveSpeed;
+    changed = true;
+  }
 
-  directionalLight.userData.visualRoll = data.roll;
+  directionalLight.position.y = Math.max(0.5, directionalLight.position.y);
+
+  if (isDown(keys, "ArrowLeft")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(0, 1, 0),
+      rotateSpeed
+    );
+    changed = true;
+  }
+
+  if (isDown(keys, "ArrowRight")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(0, 1, 0),
+      -rotateSpeed
+    );
+    changed = true;
+  }
+
+  if (isDown(keys, "ArrowUp")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(1, 0, 0),
+      rotateSpeed
+    );
+    changed = true;
+  }
+
+  if (isDown(keys, "ArrowDown")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(1, 0, 0),
+      -rotateSpeed
+    );
+    changed = true;
+  }
+
+  if (isDown(keys, "PageUp")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(0, 0, 1),
+      rotateSpeed
+    );
+
+    directionalLight.userData.visualRoll =
+      (directionalLight.userData.visualRoll ?? 0) + rotateSpeed;
+
+    changed = true;
+  }
+
+  if (isDown(keys, "PageDown")) {
+    rotateDirectionalLightAroundTarget(
+      directionalLight,
+      target,
+      new THREE.Vector3(0, 0, 1),
+      -rotateSpeed
+    );
+
+    directionalLight.userData.visualRoll =
+      (directionalLight.userData.visualRoll ?? 0) - rotateSpeed;
+
+    changed = true;
+  }
+
+  if (directionalLight.position.y < 0.5) {
+    directionalLight.position.y = 0.5;
+    changed = true;
+  }
+
+  if (changed) {
+    if (directionalLight.target) {
+      directionalLight.target.position.copy(target);
+      directionalLight.target.updateMatrixWorld();
+    }
+
+    directionalLight.lookAt(target);
+  }
 }
 
 export function updateSelectedObjectTransform(keys) {
@@ -263,11 +364,11 @@ export function moveSelectedObject(keys) {
     return;
   }
 
-  const selected = getSelectedObject();
+  const selectedTower = getSelectedTower();
 
-  if (!selected || !state.towers.includes(selected)) return;
+  if (!selectedTower) return;
   if (!canRelocateNow()) return;
-  if (!isShiftDown(keys)) return;
+  if (isShiftDown(keys)) return;
 
   if (state.relocationMoveCooldown > 0) {
     state.relocationMoveCooldown--;
@@ -284,32 +385,65 @@ export function moveSelectedObject(keys) {
 
   if (dx === 0 && dz === 0) return;
 
-  const moved = tryRelocateTower(selected, dx, dz);
+  const movedTower = tryRelocateTower(selectedTower, dx, dz);
 
-  if (moved) {
-    state.relocationMoveCooldown = 12;
+  if (movedTower) {
+    state.relocationMoveCooldown = RELOCATION_COOLDOWN_FRAMES;
   }
 }
 
 export function rotateSelectedObject(keys) {
   if (state.controlMode === "object") return;
 
-  const selected = getSelectedObject();
+  const selectedTower = getSelectedTower();
 
-  if (!selected || !state.towers.includes(selected)) return;
+  if (!selectedTower) return;
 
-  ensureDirectionalFocus(selected);
-
-  const rotateSpeed = 0.035;
+  ensureDirectionalFocus(selectedTower);
 
   if (!isShiftDown(keys)) return;
 
-  if (isDown(keys, "j", "J", "KeyJ")) selected.rotation.y += rotateSpeed;
-  if (isDown(keys, "l", "L", "KeyL")) selected.rotation.y -= rotateSpeed;
-  if (isDown(keys, "i", "I", "KeyI")) selected.rotation.x += rotateSpeed;
-  if (isDown(keys, "k", "K", "KeyK")) selected.rotation.x -= rotateSpeed;
-  if (isDown(keys, "z", "Z", "KeyZ")) selected.rotation.z += rotateSpeed;
-  if (isDown(keys, "x", "X", "KeyX")) selected.rotation.z -= rotateSpeed;
+  if (state.focusRotationCooldown > 0) {
+    state.focusRotationCooldown--;
+    return;
+  }
+
+  const focusRotateSpeed = 0.12;
+  const meshRotateSpeed = 0.035;
+
+  let focusRotated = false;
+
+  if (isDown(keys, "ArrowLeft")) {
+    rotateTowerFocus(selectedTower, focusRotateSpeed);
+    focusRotated = true;
+  }
+
+  if (isDown(keys, "ArrowRight")) {
+    rotateTowerFocus(selectedTower, -focusRotateSpeed);
+    focusRotated = true;
+  }
+
+  if (focusRotated) {
+    state.focusRotationCooldown = FOCUS_ROTATION_COOLDOWN_FRAMES;
+    return;
+  }
+
+  if (isDown(keys, "j", "J", "KeyJ")) {
+    rotateTowerFocus(selectedTower, focusRotateSpeed);
+    state.focusRotationCooldown = FOCUS_ROTATION_COOLDOWN_FRAMES;
+    return;
+  }
+
+  if (isDown(keys, "l", "L", "KeyL")) {
+    rotateTowerFocus(selectedTower, -focusRotateSpeed);
+    state.focusRotationCooldown = FOCUS_ROTATION_COOLDOWN_FRAMES;
+    return;
+  }
+
+  if (isDown(keys, "i", "I", "KeyI")) selectedTower.rotation.x += meshRotateSpeed;
+  if (isDown(keys, "k", "K", "KeyK")) selectedTower.rotation.x -= meshRotateSpeed;
+  if (isDown(keys, "z", "Z", "KeyZ")) selectedTower.rotation.z += meshRotateSpeed;
+  if (isDown(keys, "x", "X", "KeyX")) selectedTower.rotation.z -= meshRotateSpeed;
 }
 
 export function adjustActiveLightIntensity(spotLight, directionalLight, delta) {
@@ -332,13 +466,30 @@ export function adjustActiveLightIntensity(spotLight, directionalLight, delta) {
   }
 }
 
-function initDirectionalLightControlData(directionalLight) {
-  if (directionalLight.userData.control) return;
+function rotateDirectionalLightAroundTarget(
+  directionalLight,
+  target,
+  axis,
+  angle
+) {
+  const offset = directionalLight.position.clone().sub(target);
 
-  directionalLight.userData.control = {
-    yaw: 0.65,
-    pitch: 0.42,
-    roll: 0,
-    radius: 12
-  };
+  if (offset.lengthSq() < 0.0001) {
+    offset.set(4, 7, 4);
+  }
+
+  offset.applyAxisAngle(axis.normalize(), angle);
+
+  directionalLight.position.copy(target).add(offset);
+  directionalLight.position.y = Math.max(0.5, directionalLight.position.y);
+
+  directionalLight.lookAt(target);
+}
+
+function getDirectionalTargetPosition(directionalLight) {
+  if (directionalLight.target) {
+    return directionalLight.target.position.clone();
+  }
+
+  return new THREE.Vector3(0, 0, 0);
 }

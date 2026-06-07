@@ -5,7 +5,13 @@ import {
   getCurrentStageEffect,
   getCurrentStageSpawnPressure
 } from "../game/stages.js";
-import { getStageEffectText } from "../ai/stageInfo.js";
+
+import {
+  getStageEffectText,
+  getStageSectorStatus,
+  getRecommendedTowersForStage,
+  formatMultiplier
+} from "../ai/stageInfo.js";
 
 export function updateWavePreview() {
   const content = document.querySelector("#wavePreviewContent");
@@ -14,7 +20,8 @@ export function updateWavePreview() {
   if (!state.started) {
     content.innerHTML = `
       <div class="wave-preview-empty">
-        Press Enter to start.
+        <b>Mission Standby</b>
+        <span>Press Enter to deploy.</span>
       </div>
     `;
     return;
@@ -26,59 +33,65 @@ export function updateWavePreview() {
   const stageEffect = getCurrentStageEffect();
 
   const expectedEnemies = getExpectedEnemyText(isBossWave);
-  const recommendedTowers = getRecommendedTowers(stageEffect.id);
+  const recommendedTowers = getRecommendedTowersForStage(stageEffect.id);
   const threatLevel = getThreatLevel(strategy, isBossWave, stageEffect);
   const threatText = getThreatText(strategy, isBossWave, stageEffect);
+  const sectorStatus = getStageSectorStatus();
 
   content.innerHTML = `
-    <div class="wave-preview-row">
-      <span>Stage</span>
-      <b>${stage.name}</b>
+    <div class="wave-card-status ${getSectorClass(sectorStatus)}">
+      <span>Sector</span>
+      <b>${escapeHtml(sectorStatus)}</b>
     </div>
 
-    <div class="wave-preview-row">
-      <span>Effect</span>
-      <b>${getStageEffectText()}</b>
+    <div class="wave-compact-grid">
+      <div>
+        <span>Route</span>
+        <b>${escapeHtml(stage.name)}</b>
+      </div>
+
+      <div>
+        <span>Modifier</span>
+        <b>${escapeHtml(getStageEffectText())}</b>
+      </div>
+
+      <div>
+        <span>Wave</span>
+        <b>${state.wave}</b>
+      </div>
+
+      <div>
+        <span>Status</span>
+        <b>${escapeHtml(getWaveStatus())}</b>
+      </div>
+
+      <div>
+        <span>Type</span>
+        <b>${isBossWave ? "Boss" : "Normal"}</b>
+      </div>
+
+      <div>
+        <span>Enemies</span>
+        <b>${escapeHtml(expectedEnemies)}</b>
+      </div>
     </div>
 
-    <div class="wave-preview-row">
-      <span>Wave</span>
-      <b>${state.wave}</b>
+    <div class="wave-ai-plan">
+      <span>AI Plan</span>
+      <b>${escapeHtml(strategy)}</b>
     </div>
 
-    <div class="wave-preview-row">
-      <span>Status</span>
-      <b>${getWaveStatus()}</b>
+    <div class="wave-threat-box ${getThreatClass(threatLevel)}">
+      <div>
+        <span>Threat</span>
+        <b>${escapeHtml(threatLevel)}</b>
+      </div>
+      <small>${escapeHtml(threatText)}</small>
     </div>
 
-    <div class="wave-preview-row">
-      <span>Type</span>
-      <b>${isBossWave ? "Boss" : "Normal"}</b>
-    </div>
-
-    <div class="wave-preview-row">
-      <span>Enemies</span>
-      <b>${expectedEnemies}</b>
-    </div>
-
-    <div class="wave-preview-row">
-      <span>AI</span>
-      <b>${strategy}</b>
-    </div>
-
-    <div class="wave-preview-threat ${getThreatClass(threatLevel)}">
-      <span>Threat</span>
-      <b>${threatLevel}</b>
-      <small>${threatText}</small>
-    </div>
-
-    <div class="wave-preview-recommendation">
+    <div class="wave-loadout-box">
       <span>Recommended</span>
-      <b>${recommendedTowers}</b>
-    </div>
-
-    <div class="wave-preview-note">
-      ${stageEffect.description}
+      <b>${escapeHtml(recommendedTowers)}</b>
     </div>
   `;
 }
@@ -94,7 +107,7 @@ function getExpectedEnemyText(isBossWave) {
     return `${finalCount}`;
   }
 
-  return `${finalCount} (${formatMultiplier(spawnPressure)} pressure)`;
+  return `${finalCount} / ${formatMultiplier(spawnPressure)}`;
 }
 
 function getWaveStatus() {
@@ -137,78 +150,38 @@ function getThreatClass(threatLevel) {
   return "low";
 }
 
+function getSectorClass(sectorStatus) {
+  if (sectorStatus === "Critical") return "critical";
+  if (sectorStatus === "Unstable") return "high";
+  if (sectorStatus === "Alert") return "medium";
+
+  return "low";
+}
+
 function getThreatText(strategy, isBossWave, stageEffect) {
-  if (isBossWave) {
-    return "Boss variant incoming. Save ultimates and prepare burst damage.";
-  }
+  if (isBossWave) return "Boss signature. Save ultimates.";
 
-  if (stageEffect.id === "lava_pressure") {
-    return "Lava pressure increases speed and spawn tempo. Burst towers are safer.";
-  }
+  if (stageEffect.id === "lava_pressure") return "High tempo. Burst damage advised.";
+  if (stageEffect.id === "swamp_mud") return "Tanky enemies. Area damage helps.";
+  if (stageEffect.id === "crystal_resonance") return "Boosted towers, tougher enemies.";
+  if (stageEffect.id === "frozen_chill") return "Slow control is stronger.";
+  if (stageEffect.id === "ancient_armor") return "Precision damage matters.";
+  if (stageEffect.id === "canyon_wind") return "Fast lanes. Cover long routes.";
 
-  if (stageEffect.id === "swamp_mud") {
-    return "Swamp enemies are slower but tankier. Area damage helps.";
-  }
-
-  if (stageEffect.id === "crystal_resonance") {
-    return "Tower damage is boosted, but enemies have more health.";
-  }
-
-  if (stageEffect.id === "frozen_chill") {
-    return "Slow towers gain value. Control the path before enemies stack.";
-  }
-
-  if (stageEffect.id === "ancient_armor") {
-    return "Enemies are durable. Precision damage matters.";
-  }
-
-  if (stageEffect.id === "canyon_wind") {
-    return "Canyon wind favors faster enemies. Cover long lanes.";
-  }
-
-  if (strategy === "Swarm Pressure") return "More fast enemies and higher count expected.";
-  if (strategy === "Heavy Push") return "Fewer but tougher enemies expected.";
-  if (strategy === "Armored Response") return "More armored enemies expected.";
+  if (strategy === "Swarm Pressure") return "Fast enemy pressure expected.";
+  if (strategy === "Heavy Push") return "Durable enemies expected.";
+  if (strategy === "Armored Response") return "Armored enemies expected.";
   if (strategy === "Tank Response") return "Tank enemies likely.";
   if (strategy === "Fast Pressure") return "Fast enemies likely.";
-  if (strategy === "Adaptive Mix") return "AI changed plan after previous results.";
+  if (strategy === "Adaptive Mix") return "AI changed plan after scan.";
   if (strategy === "Late Wave Mix") return "Mixed pressure expected.";
 
-  return "Balanced enemy composition expected.";
+  return "Balanced enemy composition.";
 }
 
-function getRecommendedTowers(effectId) {
-  if (effectId === "forest_balance") {
-    return "Normal / Rapid";
-  }
-
-  if (effectId === "canyon_wind") {
-    return "Rapid / Sniper";
-  }
-
-  if (effectId === "frozen_chill") {
-    return "Slow / Sniper";
-  }
-
-  if (effectId === "ancient_armor") {
-    return "Sniper / Splash";
-  }
-
-  if (effectId === "lava_pressure") {
-    return "Sniper / Splash";
-  }
-
-  if (effectId === "swamp_mud") {
-    return "Splash / Slow";
-  }
-
-  if (effectId === "crystal_resonance") {
-    return "Sniper / Rapid";
-  }
-
-  return "Normal / Rapid";
-}
-
-function formatMultiplier(value = 1) {
-  return `x${Number(value).toFixed(2)}`;
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

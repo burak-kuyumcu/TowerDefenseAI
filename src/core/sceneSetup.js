@@ -10,22 +10,16 @@ import {
   ensureTerrainBlockedSet
 } from "./terrainBaseSetup.js";
 
-import {
-  applyStageAtmosphere
-} from "./stageAtmosphere.js";
+import { applyStageAtmosphere } from "./stageAtmosphere.js";
 
-import {
-  createTerrainDepth
-} from "./terrainDepthSetup.js";
+import { createTerrainDepth } from "./terrainDepthSetup.js";
 
 import {
   createPathTiles,
   clearPathTiles
 } from "./pathTileSetup.js";
 
-import {
-  clearStageDecorations
-} from "./sceneCleanup.js";
+import { clearStageDecorations } from "./sceneCleanup.js";
 
 import {
   resetDecorRegistry,
@@ -38,6 +32,11 @@ import {
 } from "./stageDecorationSetup.js";
 
 import {
+  addStoryTerrainDecorations,
+  clearStoryTerrainDecorations
+} from "./storyTerrainSetup.js";
+
+import {
   createPortal,
   updatePortalPosition
 } from "./portalSetup.js";
@@ -47,9 +46,7 @@ import {
   updateBaseFortPosition
 } from "./baseFortSetup.js";
 
-import {
-  createTileSelector
-} from "./selectorSetup.js";
+import { createTileSelector } from "./selectorSetup.js";
 
 import { clearEffects } from "../visuals/effects.js";
 import { state } from "../game/state.js";
@@ -89,8 +86,10 @@ export function createSceneSetup(canvas) {
 
   createTerrainDepth(scene);
   createPathTiles(scene);
+
   addMapDecorations(scene);
   addStageDecorations(scene);
+  addStoryTerrainDecorations(scene);
 
   createPortal(scene);
 
@@ -115,6 +114,8 @@ export function rebuildStageMap(scene, base) {
 
   clearEffects(scene);
   clearPathTiles(scene);
+
+  clearStoryTerrainDecorations(scene);
   clearStageDecorations(scene);
   clearAnimatedSceneObjects();
   resetDecorRegistry();
@@ -125,8 +126,10 @@ export function rebuildStageMap(scene, base) {
 
   createTerrainDepth(scene);
   createPathTiles(scene);
+
   addMapDecorations(scene);
   addStageDecorations(scene);
+  addStoryTerrainDecorations(scene);
 
   updatePortalPosition();
   updateBaseFortPosition(base);

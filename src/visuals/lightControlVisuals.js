@@ -33,7 +33,10 @@ function createDirectionalArrow(scene) {
     0.32
   );
 
+  directionalArrow.userData.isUtilityVisual = true;
+  directionalArrow.userData.preserveOnStageRebuild = true;
   directionalArrow.visible = false;
+
   scene.add(directionalArrow);
 }
 
@@ -58,6 +61,9 @@ function createDirectionalTargetMarker(scene) {
   directionalTargetMarker.renderOrder = 60;
   directionalTargetMarker.visible = false;
 
+  directionalTargetMarker.userData.isUtilityVisual = true;
+  directionalTargetMarker.userData.preserveOnStageRebuild = true;
+
   scene.add(directionalTargetMarker);
 }
 
@@ -80,6 +86,9 @@ function createSpotlightTargetMarker(scene) {
   spotlightTargetMarker.rotation.x = -Math.PI / 2;
   spotlightTargetMarker.renderOrder = 61;
   spotlightTargetMarker.visible = false;
+
+  spotlightTargetMarker.userData.isUtilityVisual = true;
+  spotlightTargetMarker.userData.preserveOnStageRebuild = true;
 
   scene.add(spotlightTargetMarker);
 }

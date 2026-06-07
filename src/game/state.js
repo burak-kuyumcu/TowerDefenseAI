@@ -24,7 +24,8 @@ export const state = {
     lastStrategy: null,
     successScore: 0,
     previousBaseHp: 10,
-    lastDamageDealt: 0
+    lastDamageDealt: 0,
+    lastTransformProfile: null
   },
 
   shaderMode: "standard",
@@ -53,8 +54,14 @@ export const state = {
   comboMaxTimer: 180,
 
   spawned: 0,
+  spawnedThisWave: 0,
   spawnTimer: 0,
   enemiesPerWave: 5,
+
+  waveEnemyTarget: 0,
+  enemiesToSpawn: 0,
+  waveSpawnCompleted: false,
+  waveFinishTimer: 0,
 
   enemies: [],
   towers: [],

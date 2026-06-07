@@ -1423,7 +1423,23 @@ export function cleanupEnemies(scene) {
   for (let i = state.enemies.length - 1; i >= 0; i--) {
     const enemy = state.enemies[i];
 
-    if (enemy.userData.dead) {
+    const shouldRemove =
+      !enemy ||
+      enemy.userData?.dead === true ||
+      enemy.userData?.removed === true ||
+      enemy.userData?.reachedGoal === true ||
+      enemy.userData?.reachedBase === true ||
+      enemy.userData?.finished === true ||
+      enemy.userData?.escaped === true ||
+      enemy.health <= 0 ||
+      enemy.userData?.health <= 0 ||
+      enemy.parent === null;
+
+    if (!shouldRemove) continue;
+
+    if (enemy) {
+      enemy.userData.removed = true;
+
       if (state.selectedObject === enemy) {
         state.selectedObject = null;
       }
@@ -1433,8 +1449,15 @@ export function cleanupEnemies(scene) {
       }
 
       removeHealthBar(scene, enemy);
-      state.enemies.splice(i, 1);
+
+      if (enemy.parent) {
+        enemy.parent.remove(enemy);
+      } else {
+        scene.remove(enemy);
+      }
     }
+
+    state.enemies.splice(i, 1);
   }
 }
 

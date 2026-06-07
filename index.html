@@ -4,11 +4,47 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tower Defense AI - Three.js</title>
+    <title>The Last Core Protocol - Tower Defense AI</title>
   </head>
 
   <body>
     <canvas id="app"></canvas>
+
+    <div id="missionBriefing">
+      <div class="mission-card">
+        <div class="mission-kicker">MISSION BRIEFING</div>
+
+        <h1>The Last Core Protocol</h1>
+
+        <p>
+          The Base Core is the last stable defense node in a collapsing digital
+          frontier.
+        </p>
+
+        <p>
+          An adaptive enemy AI has breached the grid, opened unstable portals,
+          and started learning from every tower placement.
+        </p>
+
+        <p>
+          Build defensive towers, analyze the battlefield, switch tactical
+          shader views, and survive the AI's evolving wave strategies.
+        </p>
+
+        <div class="mission-objectives">
+          <div><b>Objective 1:</b> Protect the Base Core.</div>
+          <div><b>Objective 2:</b> Adapt to stage modifiers.</div>
+          <div><b>Objective 3:</b> Counter the AI wave plan.</div>
+          <div><b>Objective 4:</b> Use tactical scan modes when needed.</div>
+        </div>
+
+        <button id="missionCloseButton">Close Briefing</button>
+
+        <div class="mission-footer">
+          Press Enter to deploy immediately.
+        </div>
+      </div>
+    </div>
 
     <div id="hud">
       <div>Score: <span id="score">0</span></div>
@@ -29,181 +65,326 @@
       <div>Stage Effect: <span id="stageEffect">Balanced Terrain</span></div>
     </div>
 
-    <div id="stageIntelPanel" class="hidden">
-      <div class="stage-intel-title">Stage Intel</div>
+    <div id="help" class="hidden command-help-panel">
+      <div class="help-title">Command Manual</div>
 
-      <div class="stage-intel-stage">
-        <span id="stageIntelName">Forest Route</span>
+      <div class="help-grid">
+        <section class="help-section">
+          <h3>Core Gameplay</h3>
+
+          <div class="help-row">
+            <span>Enter</span>
+            <p>Start game / next wave</p>
+          </div>
+          <div class="help-row">
+            <span>V</span>
+            <p>Start next wave</p>
+          </div>
+          <div class="help-row">
+            <span>Space</span>
+            <p>Pause / Resume</p>
+          </div>
+          <div class="help-row">
+            <span>R</span>
+            <p>Restart game</p>
+          </div>
+          <div class="help-row">
+            <span>N</span>
+            <p>Mute / Unmute</p>
+          </div>
+          <div class="help-row">
+            <span>Esc</span>
+            <p>Deselect object / close open panels</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Panels & Showcase</h3>
+
+          <div class="help-row">
+            <span>H</span>
+            <p>Show / Hide help menu</p>
+          </div>
+          <div class="help-row">
+            <span>I</span>
+            <p>Show / Hide stage intel</p>
+          </div>
+          <div class="help-row">
+            <span>F2</span>
+            <p>Show / Hide achievements</p>
+          </div>
+          <div class="help-row">
+            <span>B</span>
+            <p>Show / Hide AI analysis</p>
+          </div>
+          <div class="help-row">
+            <span>L</span>
+            <p>Show / Hide mission archive</p>
+          </div>
+          <div class="help-row">
+            <span>C</span>
+            <p>Move camera to / from 3D name showcase</p>
+          </div>
+          <div class="help-row">
+            <span>Z</span>
+            <p>Move camera to / from 6DOF transform showcase</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Building & Combat</h3>
+
+          <div class="help-row">
+            <span>Mouse Move</span>
+            <p>Select tile</p>
+          </div>
+          <div class="help-row">
+            <span>Left Click Tile</span>
+            <p>Place tower on buildable tile</p>
+          </div>
+          <div class="help-row">
+            <span>Left Click Object</span>
+            <p>Select tower, enemy, or showcase object</p>
+          </div>
+          <div class="help-row">
+            <span>Right Click Tower</span>
+            <p>Sell tower</p>
+          </div>
+          <div class="help-row">
+            <span>1 - 5</span>
+            <p>Select Normal, Rapid, Sniper, Slow, or Splash tower</p>
+          </div>
+          <div class="help-row">
+            <span>T</span>
+            <p>Place selected tower</p>
+          </div>
+          <div class="help-row">
+            <span>U</span>
+            <p>Upgrade selected tower</p>
+          </div>
+          <div class="help-row">
+            <span>F</span>
+            <p>Use selected tower ultimate</p>
+          </div>
+          <div class="help-row">
+            <span>G</span>
+            <p>Change selected tower target mode</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Control Modes</h3>
+
+          <div class="help-row">
+            <span>F3</span>
+            <p>Cycle active control mode</p>
+          </div>
+          <div class="help-row">
+            <span>Mode 1</span>
+            <p>Camera 6DOF</p>
+          </div>
+          <div class="help-row">
+            <span>Mode 2</span>
+            <p>Object 6DOF</p>
+          </div>
+          <div class="help-row">
+            <span>Mode 3</span>
+            <p>Spotlight Control</p>
+          </div>
+          <div class="help-row">
+            <span>Mode 4</span>
+            <p>Directional Light Control</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Camera 6DOF</h3>
+
+          <div class="help-row">
+            <span>W / A / S / D</span>
+            <p>Move camera on X/Z plane</p>
+          </div>
+          <div class="help-row">
+            <span>Q / E</span>
+            <p>Move camera up / down</p>
+          </div>
+          <div class="help-row">
+            <span>Arrow Left / Right</span>
+            <p>Camera yaw when no selected tower is using tower controls</p>
+          </div>
+          <div class="help-row">
+            <span>Arrow Up / Down</span>
+            <p>Camera pitch when no selected tower is using tower controls</p>
+          </div>
+          <div class="help-row">
+            <span>PageUp / PageDown</span>
+            <p>Camera roll</p>
+          </div>
+          <div class="help-row">
+            <span>Shift</span>
+            <p>Faster movement / rotation</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Object 6DOF</h3>
+
+          <div class="help-row">
+            <span>Select Object</span>
+            <p>Select a tower, enemy, or showcase object</p>
+          </div>
+          <div class="help-row">
+            <span>Z</span>
+            <p>Move camera to transform showcase lab</p>
+          </div>
+          <div class="help-row">
+            <span>F3</span>
+            <p>Switch to Object 6DOF mode</p>
+          </div>
+          <div class="help-row">
+            <span>W / A / S / D</span>
+            <p>Translate selected object on X/Z</p>
+          </div>
+          <div class="help-row">
+            <span>Q / E</span>
+            <p>Translate selected object up / down</p>
+          </div>
+          <div class="help-row">
+            <span>Arrow Keys</span>
+            <p>Rotate selected object yaw / pitch</p>
+          </div>
+          <div class="help-row">
+            <span>PageUp / PageDown</span>
+            <p>Rotate selected object roll</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Tower Relocation & Focus</h3>
+
+          <div class="help-row">
+            <span>Preparation Phase</span>
+            <p>Relocation works only between waves when no enemies are active</p>
+          </div>
+          <div class="help-row">
+            <span>Select Tower</span>
+            <p>Select a placed tower before relocating or rotating focus</p>
+          </div>
+          <div class="help-row">
+            <span>Arrow Keys</span>
+            <p>Relocate selected tower one grid tile during preparation</p>
+          </div>
+          <div class="help-row">
+            <span>Shift + Arrow L/R</span>
+            <p>Rotate selected tower focus direction</p>
+          </div>
+          <div class="help-row">
+            <span>Shift + J / L</span>
+            <p>Alternative focus direction rotation</p>
+          </div>
+          <div class="help-row">
+            <span>X-Ray + Tower</span>
+            <p>Show tactical relocation hints for selected tower</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Lighting</h3>
+
+          <div class="help-row">
+            <span>O</span>
+            <p>Spotlight on / off</p>
+          </div>
+          <div class="help-row">
+            <span>P</span>
+            <p>Directional light on / off</p>
+          </div>
+          <div class="help-row">
+            <span>Shift + H</span>
+            <p>Show / Hide spotlight helper</p>
+          </div>
+          <div class="help-row">
+            <span>W / A / S / D</span>
+            <p>Move active light on X/Z</p>
+          </div>
+          <div class="help-row">
+            <span>Q / E</span>
+            <p>Move active light up / down</p>
+          </div>
+          <div class="help-row">
+            <span>Arrow Keys</span>
+            <p>Aim light direction / target</p>
+          </div>
+          <div class="help-row">
+            <span>+ / -</span>
+            <p>Adjust active light intensity</p>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Shaders & Tactical Scan</h3>
+
+          <div class="help-row">
+            <span>M</span>
+            <p>Change shader mode</p>
+          </div>
+          <div class="help-row">
+            <span>Standard</span>
+            <p>Normal render</p>
+          </div>
+          <div class="help-row">
+            <span>Toon</span>
+            <p>Full-screen cartoon post-process shader</p>
+          </div>
+          <div class="help-row">
+            <span>Neon</span>
+            <p>Full-screen glow post-process shader</p>
+          </div>
+          <div class="help-row">
+            <span>X-Ray</span>
+            <p>Full-screen tactical scan shader</p>
+          </div>
+          <div class="help-row">
+            <span>X-Ray + Tower</span>
+            <p>Show relocation hints for selected tower</p>
+          </div>
+        </section>
+
+        <section class="help-section help-section-wide">
+          <h3>Tower Ultimates</h3>
+
+          <div class="help-ultimate-list">
+            <div>
+              <b>Normal</b>
+              <span>Focus Burst</span>
+            </div>
+            <div>
+              <b>Rapid</b>
+              <span>Overdrive</span>
+            </div>
+            <div>
+              <b>Sniper</b>
+              <span>Piercing Shot</span>
+            </div>
+            <div>
+              <b>Slow</b>
+              <span>Freeze Field</span>
+            </div>
+            <div>
+              <b>Splash</b>
+              <span>Meteor Blast</span>
+            </div>
+          </div>
+        </section>
       </div>
-
-      <div class="stage-intel-effect">
-        <span id="stageIntelEffect">Forest Balance</span>
-      </div>
-
-      <div id="stageIntelDescription">
-        No harsh modifier. This stage is designed as the baseline.
-      </div>
-
-      <div class="stage-intel-grid">
-        <div>
-          <span>Enemy SPD</span>
-          <b id="stageEnemySpeed">x1.00</b>
-        </div>
-
-        <div>
-          <span>Enemy HP</span>
-          <b id="stageEnemyHealth">x1.00</b>
-        </div>
-
-        <div>
-          <span>Tower DMG</span>
-          <b id="stageTowerDamage">x1.00</b>
-        </div>
-
-        <div>
-          <span>Gold</span>
-          <b id="stageGoldBonus">x1.00</b>
-        </div>
-
-        <div>
-          <span>Spawn</span>
-          <b id="stageSpawnPressure">x1.00</b>
-        </div>
-
-        <div>
-          <span>Slow</span>
-          <b id="stageSlowBonus">x1.00</b>
-        </div>
-      </div>
-
-      <div class="stage-intel-recommendation">
-        <span>Recommended:</span>
-        <b id="stageRecommendedTowers">Normal / Rapid</b>
-      </div>
-    </div>
-
-    <div id="help" class="hidden">
-      <div><b>Controls</b></div>
-
-      <div><b>Game</b></div>
-      <div>Enter: Start / next wave</div>
-      <div>V: Start next wave</div>
-      <div>Space: Pause / Resume</div>
-      <div>R: Restart game</div>
-      <div>N: Mute / Unmute</div>
-      <div>H: Show / Hide help</div>
-      <div>I: Show / Hide stage intel</div>
-      <div>F2: Show / Hide achievements</div>
-      <div>B: Show / Hide AI analysis</div>
-      <div>C: Show / Hide 3D name showcase</div>
-      <div>F3: Cycle control mode</div>
-
-      <br />
-
-      <div><b>Control Modes</b></div>
-      <div>F3 cycles through:</div>
-      <div>Camera 6DOF</div>
-      <div>Object 6DOF</div>
-      <div>Spotlight Control</div>
-      <div>Directional Light</div>
-
-      <br />
-
-      <div><b>Building & Selection</b></div>
-      <div>Mouse Move: Select tile</div>
-      <div>Green tile: buildable</div>
-      <div>Red tile: blocked/path/occupied</div>
-      <div>Left Click Empty Tile: Place tower</div>
-      <div>Left Click Object: Select object</div>
-      <div>Right Click Tower: Sell tower</div>
-      <div>T: Place tower</div>
-      <div>U: Upgrade selected tower</div>
-      <div>F: Use selected tower ultimate</div>
-      <div>G: Change selected tower target mode</div>
-      <div>Esc: Deselect object</div>
-
-      <br />
-
-      <div><b>Tower Types</b></div>
-      <div>1: Normal Tower</div>
-      <div>2: Rapid Tower</div>
-      <div>3: Sniper Tower</div>
-      <div>4: Slow Tower</div>
-      <div>5: Splash Tower</div>
-
-      <br />
-
-      <div><b>Tower Ultimates</b></div>
-      <div>Normal: Focus Burst</div>
-      <div>Rapid: Overdrive</div>
-      <div>Sniper: Piercing Shot</div>
-      <div>Slow: Freeze Field</div>
-      <div>Splash: Meteor Blast</div>
-
-      <br />
-
-      <div><b>Camera Mode - 6DOF</b></div>
-      <div>F3 until Camera 6DOF mode</div>
-      <div>W/A/S/D: Move camera on X/Z</div>
-      <div>Q/E: Move camera up/down</div>
-      <div>Arrow Left/Right: Camera yaw</div>
-      <div>Arrow Up/Down: Camera pitch</div>
-      <div>PageUp/PageDown: Camera roll</div>
-      <div>Shift: Faster movement/rotation</div>
-
-      <br />
-
-      <div><b>Object Mode - 6DOF</b></div>
-      <div>Select a tower, enemy, or showcase object with mouse</div>
-      <div>F3 until Object 6DOF mode</div>
-      <div>W/A/S/D: Move selected object on X/Z</div>
-      <div>Q/E: Move selected object up/down</div>
-      <div>Arrow Left/Right: Rotate yaw</div>
-      <div>Arrow Up/Down: Rotate pitch</div>
-      <div>PageUp/PageDown: Rotate roll</div>
-      <div>Shift: Faster transform</div>
-      <div>Preparation mode: Shift + Arrow Keys relocate tower on grid</div>
-
-      <br />
-
-      <div><b>Spotlight Mode</b></div>
-      <div>F3 until Spotlight Control mode</div>
-      <div>O: Spotlight on/off</div>
-      <div>Shift + H: Spotlight helper</div>
-      <div>W/A/S/D: Move spotlight on X/Z</div>
-      <div>Q/E: Move spotlight up/down</div>
-      <div>Arrow Keys: Aim spotlight target X/Z</div>
-      <div>PageUp/PageDown: Aim spotlight target Y</div>
-      <div>+/-: Spotlight intensity</div>
-      <div>Blue ring: Spotlight target marker</div>
-
-      <br />
-
-      <div><b>Directional Light Mode</b></div>
-      <div>F3 until Directional Light mode</div>
-      <div>P: Directional light on/off</div>
-      <div>Arrow Left/Right: Direction yaw</div>
-      <div>Arrow Up/Down: Direction pitch</div>
-      <div>PageUp/PageDown: Direction roll value</div>
-      <div>Alt + W/A/S/D: Move directional light on X/Z</div>
-      <div>Alt + Q/E: Move directional light up/down</div>
-      <div>+/-: Directional light intensity</div>
-      <div>Yellow arrow: Directional light direction helper</div>
-
-      <br />
-
-      <div><b>Shader & Tactical Scan</b></div>
-      <div>M: Change shader mode</div>
-      <div>Standard: Normal render</div>
-      <div>Toon: Full-screen cartoon shader</div>
-      <div>Neon: Full-screen glow shader</div>
-      <div>X-Ray: Full-screen tactical scan shader</div>
-      <div>X-Ray + selected tower: Show relocation hints</div>
     </div>
 
     <div id="overlay">
-      <div id="overlayTitle">Tower Defense AI</div>
-      <div id="overlayText">Press Enter to Start</div>
+      <div id="overlayTitle">The Last Core Protocol</div>
+      <div id="overlayText">
+        Defend the last Base Core against an adaptive AI siege.<br />
+        Press Enter to Deploy
+      </div>
     </div>
 
     <div id="selectedInfo">
@@ -217,7 +398,8 @@
       <div class="control-status-title">Control Mode</div>
       <div id="controlStatusMode">Camera 6DOF</div>
       <div id="controlStatusHelp">
-        W/A/S/D: Move camera | Q/E: Up/Down | Arrows: Rotate | PageUp/PageDown: Roll
+        W/A/S/D: Move camera | Q/E: Up/Down | Arrows: Rotate |
+        PageUp/PageDown: Roll
       </div>
     </div>
 
@@ -250,10 +432,17 @@
 
         <div class="settings-about">
           <b>About Game</b>
+
           <p>
-            Tower Defense AI is a WebGL2 3D strategy game where the enemy AI
-            adapts to your tower choices, stage modifiers, and defensive
-            patterns.
+            The Base Core is the last stable defense node in a collapsing
+            digital frontier. An adaptive enemy AI opens portals, studies tower
+            placements, and changes its attack strategy from wave to wave.
+          </p>
+
+          <p>
+            Each stage represents an unstable sector with different combat
+            modifiers. The player must build, upgrade, scan, and adapt before
+            the Core falls.
           </p>
 
           <div class="requirement-proof">
@@ -262,14 +451,28 @@
             <div><b>Student:</b> Aydın Burak Kuyumcu</div>
             <div><b>Rendering:</b> WebGL2 + JavaScript + GLSL + HTML</div>
             <div><b>Camera:</b> 6DOF translation and rotation</div>
-            <div><b>Objects:</b> selectable 3D transform showcase objects</div>
+            <div>
+              <b>Objects:</b> Z transform showcase with 3 selectable 6DOF
+              objects
+            </div>
             <div><b>Lights:</b> directional light + independent spotlight</div>
+            <div>
+              <b>Light Control:</b> F3 modes, WASD/QE movement, arrows
+              rotation, +/- intensity
+            </div>
             <div>
               <b>Shaders:</b> full-screen Toon, Neon, and X-Ray/Scan GLSL
               shaders
             </div>
-            <div><b>Name Scene:</b> 3D object-built name showcase</div>
+            <div>
+              <b>Name Scene:</b> C camera transition to 3D object-built name
+              showcase
+            </div>
             <div><b>AI:</b> adaptive wave strategy and stage-aware planning</div>
+            <div>
+              <b>Narrative:</b> The Last Core Protocol, an adaptive AI siege
+              against the final defense node
+            </div>
           </div>
         </div>
 
