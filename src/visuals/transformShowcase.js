@@ -14,7 +14,7 @@ export function initTransformShowcase(scene) {
   showcaseGroup.userData.isTransformShowcase = true;
   showcaseGroup.userData.preserveOnStageRebuild = true;
 
-  // Separate 3D object lab placed outside the main battlefield.
+
   showcaseGroup.position.set(-9.4, 0.18, 15.4);
 
   const platform = createShowcasePlatform();
@@ -68,11 +68,7 @@ export function updateTransformShowcase(camera) {
     const isSelected = state.selectedObject === object;
     const isObjectMode = state.controlMode === "object";
 
-    /*
-      Object 6DOF modunda seçili objenin Y pozisyonunu bobbing animasyonu
-      ezmesin. Q/E ile yukarı-aşağı taşıdığımız değeri yeni baseY olarak
-      kaydediyoruz. Böylece objeyi bırakınca eski yüksekliğe zıplamıyor.
-    */
+
     if (isSelected && isObjectMode) {
       object.userData.baseY = object.position.y;
       object.userData.floatTime = 0;

@@ -25,8 +25,7 @@ export function createGroundPlane(scene, groundColor = 0x256b2f) {
 export function createGridOverlay(scene) {
   const grid = new THREE.GridHelper(MAP_SIZE, MAP_SIZE, 0x9ca3af, 0x365f46);
 
-  // Grid çizgilerini tile kenarlarına kaydırıyoruz.
-  // Böylece integer koordinatlar tile merkezine denk gelir.
+
   grid.position.set(0.5, 0.032, 0.5);
 
   scene.add(grid);

@@ -48,9 +48,7 @@ canvas#app {
   display: none !important;
 }
 
-/* =========================================================
-   Shared panels
-   ========================================================= */
+
 
 #hud,
 #selectedInfo,
@@ -109,9 +107,7 @@ canvas#app {
   border-radius: 999px;
 }
 
-/* =========================================================
-   HUD
-   ========================================================= */
+
 
 #hud {
   top: 12px !important;
@@ -154,9 +150,7 @@ canvas#app {
   font-weight: 900 !important;
 }
 
-/* =========================================================
-   Quick buttons + Settings button
-   ========================================================= */
+
 
 #quickPanelButtons {
   position: fixed !important;
@@ -205,9 +199,7 @@ canvas#app {
   z-index: 91 !important;
 }
 
-/* =========================================================
-   Selected info + action panel
-   ========================================================= */
+
 
 #selectedInfo {
   left: 12px !important;
@@ -331,7 +323,7 @@ canvas#app {
   background: linear-gradient(180deg, #dc2626, #7f1d1d) !important;
 }
 
-/* Selected info details */
+
 
 .selected-empty {
   color: var(--ui-text);
@@ -395,9 +387,7 @@ canvas#app {
   color: #bae6fd;
 }
 
-/* =========================================================
-   Right side gameplay stack
-   ========================================================= */
+
 
 #wavePreview {
   top: 72px !important;
@@ -447,7 +437,7 @@ canvas#app {
   color: var(--ui-yellow) !important;
 }
 
-/* New compact wave preview cards */
+
 
 .wave-card-status,
 .wave-ai-plan,
@@ -546,7 +536,7 @@ canvas#app {
   line-height: 1.22 !important;
 }
 
-/* Old wave classes stay compatible instead of breaking cached markup */
+
 
 .wave-preview-row,
 .wave-preview-sector {
@@ -587,7 +577,7 @@ canvas#app {
   font-weight: 700;
 }
 
-/* Build panel */
+
 
 #buildPanel {
   top: 72px !important;
@@ -681,7 +671,7 @@ canvas#app {
   margin-right: 14px;
 }
 
-/* Hide right gameplay panels when an info drawer is open */
+
 
 body.info-drawer-open #wavePreview,
 body.info-drawer-open #buildPanel {
@@ -690,9 +680,7 @@ body.info-drawer-open #buildPanel {
   pointer-events: none !important;
 }
 
-/* =========================================================
-   Minimap + event log
-   ========================================================= */
+
 
 #minimap {
   position: fixed !important;
@@ -753,9 +741,7 @@ body.info-drawer-open #buildPanel {
   color: #dbeafe;
 }
 
-/* =========================================================
-   Control status
-   ========================================================= */
+
 
 #controlStatusPanel {
   left: 50% !important;
@@ -790,9 +776,7 @@ body.info-drawer-open #buildPanel {
   line-height: 1.22 !important;
 }
 
-/* =========================================================
-   Help / Stage Intel / AI / Achievements drawers
-   ========================================================= */
+
 
 #help,
 #stageIntelPanel,
@@ -831,8 +815,7 @@ body.info-drawer-open #buildPanel {
   display: none !important;
 }
 
-/* Command Manual full help layout.
-   Works with the updated index.html command-help-panel markup. */
+
 
 #help.command-help-panel {
   width: min(1180px, calc(100vw - 56px)) !important;
@@ -953,7 +936,7 @@ body.info-drawer-open #buildPanel {
   line-height: 1.3 !important;
 }
 
-/* AI report */
+
 
 .ai-feedback-title,
 .stage-intel-title,
@@ -1052,7 +1035,7 @@ body.info-drawer-open #buildPanel {
   font-weight: 700 !important;
 }
 
-/* Stage Intel */
+
 
 .stage-intel-stage {
   margin-bottom: 6px !important;
@@ -1128,7 +1111,7 @@ body.info-drawer-open #buildPanel {
   color: var(--ui-yellow) !important;
 }
 
-/* Achievements */
+
 
 #achievementContent {
   display: flex;
@@ -1198,9 +1181,7 @@ body.info-drawer-open #buildPanel {
   opacity: 0.72;
 }
 
-/* =========================================================
-   Settings modal
-   ========================================================= */
+
 
 #settingsPanel {
   position: fixed !important;
@@ -1300,9 +1281,7 @@ body.info-drawer-open #buildPanel {
   color: var(--ui-yellow);
 }
 
-/* =========================================================
-   Mission briefing
-   ========================================================= */
+
 
 #missionBriefing {
   position: fixed;
@@ -1386,9 +1365,6 @@ body.info-drawer-open #buildPanel {
   text-align: center;
 }
 
-/* =========================================================
-   Overlay / Announcer / Boss HUD / Screen flash
-   ========================================================= */
 
 #overlay {
   position: fixed;
@@ -1539,150 +1515,776 @@ body.info-drawer-open #buildPanel {
   transition: width 0.15s ease;
 }
 
-/* =========================================================
-   Responsive safety
-   ========================================================= */
 
-@media (max-width: 1500px) {
-  #hud {
-    width: 185px !important;
-    font-size: 9.5px !important;
-    padding: 9px 10px !important;
+
+html,
+body {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+canvas#app,
+#app {
+  width: 100vw !important;
+  height: 100vh !important;
+  display: block !important;
+}
+
+
+#hud,
+#selectedInfo,
+#actionPanel,
+#wavePreview,
+#buildPanel,
+#eventLog,
+#controlStatusPanel,
+#aiFeedback,
+#help,
+#stageIntelPanel,
+#achievementPanel,
+#quickPanelButtons,
+#settingsPanel {
+  box-sizing: border-box !important;
+  max-width: calc(100vw - 24px) !important;
+}
+
+#hud *,
+#selectedInfo *,
+#actionPanel *,
+#wavePreview *,
+#buildPanel *,
+#eventLog *,
+#controlStatusPanel *,
+#aiFeedback *,
+#help *,
+#stageIntelPanel *,
+#achievementPanel *,
+#quickPanelButtons *,
+#settingsPanel * {
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
+}
+
+
+
+#quickPanelButtons {
+  position: fixed !important;
+  top: 12px !important;
+  right: 62px !important;
+  left: auto !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  z-index: 125 !important;
+}
+
+#quickPanelButtons button {
+  min-width: 58px !important;
+  height: 30px !important;
+  padding: 0 10px !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  border-radius: 10px !important;
+}
+
+#quickHelpButton {
+  min-width: 42px !important;
+}
+
+#settingsButton {
+  position: fixed !important;
+  top: 12px !important;
+  right: 14px !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  z-index: 130 !important;
+}
+
+#hud {
+  left: 14px !important;
+  top: 14px !important;
+  width: 180px !important;
+  max-height: 34vh !important;
+  padding: 10px 12px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 45 !important;
+}
+
+#hud div {
+  min-height: 13px !important;
+  margin-bottom: 1px !important;
+}
+
+#wavePreview {
+  top: 70px !important;
+  right: 170px !important;
+  width: 220px !important;
+  max-height: 42vh !important;
+  padding: 12px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 45 !important;
+}
+
+.wave-preview-title {
+  font-size: 14px !important;
+  margin-bottom: 8px !important;
+}
+
+#wavePreviewContent {
+  gap: 6px !important;
+}
+
+.wave-card-status,
+.wave-ai-plan,
+.wave-loadout-box,
+.wave-threat-box {
+  padding: 6px 8px !important;
+}
+
+.wave-compact-grid {
+  gap: 6px !important;
+}
+
+.wave-compact-grid div {
+  min-height: 34px !important;
+  padding: 6px 7px !important;
+}
+
+#wavePreview button,
+#startWaveButton {
+  min-height: 30px !important;
+  margin-top: 8px !important;
+  padding: 6px 8px !important;
+  font-size: 10px !important;
+}
+
+#buildPanel {
+  top: 70px !important;
+  right: 14px !important;
+  width: 136px !important;
+  max-height: 38vh !important;
+  padding: 10px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 44 !important;
+}
+
+.build-title,
+#buildPanel .build-title {
+  font-size: 13px !important;
+  margin-bottom: 8px !important;
+}
+
+.build-button,
+#buildPanel button,
+#buildPanel .build-button {
+  height: 28px !important;
+  min-height: 28px !important;
+  margin-bottom: 7px !important;
+  padding: 4px 7px !important;
+  font-size: 9.5px !important;
+}
+
+#selectedInfo {
+  left: 14px !important;
+  bottom: 104px !important;
+  width: 180px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 21vh !important;
+  padding: 10px !important;
+  font-size: 10px !important;
+  line-height: 1.22 !important;
+  overflow: hidden !important;
+  z-index: 44 !important;
+}
+
+#selectedInfo > div:first-child,
+#selectedInfo b {
+  font-size: 13px !important;
+  margin-bottom: 7px !important;
+}
+
+#selectedInfoContent {
+  height: auto !important;
+  max-height: 120px !important;
+  padding: 8px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+  overflow-y: auto !important;
+}
+
+#actionPanel {
+  left: 14px !important;
+  bottom: 14px !important;
+  width: 180px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 82px !important;
+  padding: 9px !important;
+  font-size: 10px !important;
+  overflow: hidden !important;
+  z-index: 44 !important;
+}
+
+#actionPanel > div:first-child,
+#actionPanel b {
+  font-size: 13px !important;
+  margin-bottom: 7px !important;
+}
+
+#actionPanel button {
+  height: 26px !important;
+  min-height: 26px !important;
+  margin: 0 0 6px 0 !important;
+  padding: 4px 7px !important;
+  font-size: 9.5px !important;
+}
+
+#eventLog {
+  right: 14px !important;
+  bottom: 14px !important;
+  width: 300px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 92px !important;
+  padding: 8px 10px !important;
+  font-size: 9.5px !important;
+  overflow: hidden !important;
+  z-index: 42 !important;
+}
+
+.event-log-title {
+  font-size: 13px !important;
+  margin-bottom: 6px !important;
+}
+
+#eventLogContent {
+  height: auto !important;
+  max-height: 56px !important;
+  font-size: 9px !important;
+  line-height: 1.22 !important;
+  overflow-y: auto !important;
+}
+
+#minimap {
+  right: 14px !important;
+  bottom: 116px !important;
+  width: 118px !important;
+  height: 118px !important;
+  min-width: 118px !important;
+  min-height: 118px !important;
+  max-width: 118px !important;
+  max-height: 118px !important;
+  opacity: 0.92 !important;
+  z-index: 41 !important;
+}
+
+#controlStatusPanel {
+  left: 50% !important;
+  bottom: 14px !important;
+  transform: translateX(-50%) !important;
+  width: min(390px, calc(100vw - 520px)) !important;
+  min-width: 260px !important;
+  max-height: 68px !important;
+  padding: 8px 12px !important;
+  font-size: 9.3px !important;
+  line-height: 1.18 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  z-index: 43 !important;
+}
+
+.control-status-title {
+  font-size: 10px !important;
+}
+
+#controlStatusMode {
+  font-size: 11px !important;
+}
+
+#controlStatusHelp {
+  font-size: 9px !important;
+  line-height: 1.18 !important;
+}
+
+
+#help.command-help-panel {
+  width: min(1180px, calc(100vw - 56px)) !important;
+  max-width: min(1180px, calc(100vw - 56px)) !important;
+  max-height: calc(100vh - 56px) !important;
+  padding: 28px 32px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#help.command-help-panel .help-title {
+  font-size: clamp(28px, 3vw, 38px) !important;
+}
+
+#help.command-help-panel .help-grid {
+  gap: 16px !important;
+}
+
+#help.command-help-panel .help-row {
+  grid-template-columns: 145px minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+#help.command-help-panel .help-row span,
+#help.command-help-panel .help-row p {
+  font-size: 12px !important;
+  line-height: 1.32 !important;
+}
+
+#settingsPanel .settings-card,
+.settings-card {
+  width: min(680px, calc(100vw - 56px)) !important;
+  max-width: min(680px, calc(100vw - 56px)) !important;
+  max-height: calc(100vh - 56px) !important;
+}
+
+#stageIntelPanel:not(.hidden),
+#aiFeedback:not(.hidden),
+#achievementPanel:not(.hidden) {
+  width: min(680px, calc(100vw - 56px)) !important;
+  max-width: min(680px, calc(100vw - 56px)) !important;
+  max-height: calc(100vh - 64px) !important;
+  overflow-y: auto !important;
+}
+
+
+
+@media (max-width: 1700px), (max-height: 940px) {
+  #quickPanelButtons {
+    top: 10px !important;
+    right: 52px !important;
+    gap: 6px !important;
   }
 
-  #selectedInfo,
-  #actionPanel {
-    width: 185px !important;
+  #quickPanelButtons button {
+    min-width: 52px !important;
+    height: 27px !important;
+    padding: 0 8px !important;
+    font-size: 10px !important;
+  }
+
+  #quickHelpButton {
+    min-width: 36px !important;
+  }
+
+  #settingsButton {
+    top: 10px !important;
+    right: 10px !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    font-size: 13px !important;
+  }
+
+  #hud {
+    left: 10px !important;
+    top: 10px !important;
+    width: 160px !important;
+    max-height: 32vh !important;
+    padding: 8px 10px !important;
+    font-size: 9px !important;
+    line-height: 1.18 !important;
   }
 
   #wavePreview {
-    width: 218px !important;
-    right: 154px !important;
+    top: 62px !important;
+    right: 148px !important;
+    width: 200px !important;
+    max-height: 41vh !important;
+    padding: 10px !important;
+    font-size: 9px !important;
   }
 
   #buildPanel {
-    width: 122px !important;
+    top: 62px !important;
+    right: 10px !important;
+    width: 124px !important;
+    max-height: 34vh !important;
+    padding: 8px !important;
   }
 
-  #eventLog {
-    width: 360px !important;
+  .build-title,
+  #buildPanel .build-title {
+    font-size: 11px !important;
   }
 
-  #help:not(.command-help-panel),
-  #stageIntelPanel,
-  #achievementPanel,
-  #aiFeedback {
-    width: 390px !important;
-  }
-}
-
-@media (max-width: 1280px) {
-  #help.command-help-panel .help-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  #help.command-help-panel .help-section-wide {
-    grid-column: auto !important;
-  }
-}
-
-@media (max-height: 790px) {
-  #hud {
-    font-size: 9.5px !important;
-    line-height: 1.14 !important;
-  }
-
-  #wavePreview,
-  #buildPanel {
-    top: 58px !important;
+  .build-button,
+  #buildPanel button,
+  #buildPanel .build-button {
+    height: 25px !important;
+    min-height: 25px !important;
+    margin-bottom: 6px !important;
+    font-size: 8.5px !important;
   }
 
   #selectedInfo {
-    bottom: 174px !important;
+    left: 10px !important;
+    bottom: 92px !important;
+    width: 160px !important;
+    max-height: 20vh !important;
+    padding: 8px !important;
+    font-size: 9px !important;
+  }
+
+  #selectedInfoContent {
+    max-height: 104px !important;
+    padding: 7px !important;
+    font-size: 9px !important;
   }
 
   #actionPanel {
-    bottom: 34px !important;
+    left: 10px !important;
+    bottom: 10px !important;
+    width: 160px !important;
+    max-height: 76px !important;
+    padding: 8px !important;
+    font-size: 9px !important;
   }
 
-  #minimap {
-    width: 118px !important;
-    height: 118px !important;
-    min-width: 118px !important;
-    min-height: 118px !important;
-    max-width: 118px !important;
-    max-height: 118px !important;
-    bottom: 122px !important;
+  #actionPanel button {
+    height: 24px !important;
+    min-height: 24px !important;
+    font-size: 8.5px !important;
+    margin-bottom: 5px !important;
   }
 
   #eventLog {
-    height: 86px !important;
-    min-height: 86px !important;
-    max-height: 86px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: 260px !important;
+    max-height: 74px !important;
+    padding: 7px 9px !important;
+  }
+
+  .event-log-title {
+    font-size: 12px !important;
+  }
+
+  #eventLogContent {
+    max-height: 44px !important;
+    font-size: 8.5px !important;
+  }
+
+  #minimap {
+    right: 10px !important;
+    bottom: 92px !important;
+    width: 102px !important;
+    height: 102px !important;
+    min-width: 102px !important;
+    min-height: 102px !important;
+    max-width: 102px !important;
+    max-height: 102px !important;
   }
 
   #controlStatusPanel {
     bottom: 10px !important;
+    width: min(350px, calc(100vw - 460px)) !important;
+    min-width: 235px !important;
+    max-height: 60px !important;
+    padding: 7px 10px !important;
+    font-size: 8.4px !important;
   }
 
-  #help:not(.command-help-panel),
-  #stageIntelPanel,
-  #achievementPanel,
-  #aiFeedback {
-    max-height: calc(100vh - 260px) !important;
+  #controlStatusHelp {
+    font-size: 8px !important;
   }
 }
 
-@media (max-width: 900px) {
-  #hud {
-    width: 190px !important;
-    font-size: 9.5px !important;
+
+
+@media (max-width: 1450px), (max-height: 820px) {
+  #buildPanel {
+    display: none !important;
+  }
+
+  #eventLog {
+    display: none !important;
   }
 
   #quickPanelButtons {
-    right: 56px !important;
+    top: 8px !important;
+    right: 48px !important;
     gap: 5px !important;
   }
 
   #quickPanelButtons button {
-    min-width: 40px !important;
+    min-width: 46px !important;
+    height: 25px !important;
     padding: 0 7px !important;
-    font-size: 10px !important;
+    font-size: 9px !important;
   }
 
-  #selectedInfo,
-  #actionPanel,
-  #eventLog,
-  #minimap {
+  #quickHelpButton {
+    min-width: 34px !important;
+  }
+
+  #settingsButton {
+    top: 8px !important;
+    right: 8px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    font-size: 12px !important;
+  }
+
+  #hud {
+    left: 8px !important;
+    top: 8px !important;
+    width: 150px !important;
+    max-height: 31vh !important;
+    padding: 7px 9px !important;
+    font-size: 8.2px !important;
+    line-height: 1.16 !important;
+  }
+
+  #gameState,
+  #hud div:nth-child(13),
+  #hud div:nth-child(14),
+  #hud div:nth-child(16) {
     display: none !important;
   }
 
   #wavePreview {
-    right: 12px !important;
-    top: 58px !important;
-    width: 210px !important;
+    top: 56px !important;
+    right: 10px !important;
+    width: 184px !important;
+    max-height: 44vh !important;
+    padding: 9px !important;
+    font-size: 8.4px !important;
+    line-height: 1.16 !important;
   }
 
-  #buildPanel {
-    right: 12px !important;
-    top: 58px !important;
-    width: 122px !important;
+  .wave-preview-title {
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .wave-card-status,
+  .wave-ai-plan,
+  .wave-loadout-box,
+  .wave-threat-box {
+    padding: 5px 7px !important;
+  }
+
+  .wave-compact-grid {
+    gap: 5px !important;
+  }
+
+  .wave-compact-grid div {
+    min-height: 31px !important;
+    padding: 5px 6px !important;
+  }
+
+  .wave-card-status span,
+  .wave-ai-plan span,
+  .wave-loadout-box span,
+  .wave-threat-box span,
+  .wave-compact-grid span {
+    font-size: 8.5px !important;
+  }
+
+  .wave-card-status b,
+  .wave-ai-plan b,
+  .wave-loadout-box b,
+  .wave-threat-box b,
+  .wave-compact-grid b {
+    font-size: 8.5px !important;
+  }
+
+  .wave-threat-box small {
+    font-size: 8.2px !important;
+  }
+
+  #wavePreview button,
+  #startWaveButton {
+    min-height: 24px !important;
+    padding: 4px 6px !important;
+    font-size: 8.2px !important;
+  }
+
+  #selectedInfo {
+    left: 8px !important;
+    bottom: 82px !important;
+    width: 150px !important;
+    max-height: 18vh !important;
+    padding: 7px 8px !important;
+    font-size: 8.2px !important;
+    line-height: 1.16 !important;
+  }
+
+  #selectedInfo > div:first-child,
+  #selectedInfo b {
+    font-size: 11px !important;
+    margin-bottom: 5px !important;
+  }
+
+  #selectedInfoContent {
+    max-height: 86px !important;
+    padding: 7px !important;
+    font-size: 8.2px !important;
+    line-height: 1.18 !important;
+  }
+
+  #actionPanel {
+    left: 8px !important;
+    bottom: 8px !important;
+    width: 150px !important;
+    max-height: 68px !important;
+    padding: 7px !important;
+    font-size: 8.2px !important;
+  }
+
+  #actionPanel > div:first-child,
+  #actionPanel b {
+    font-size: 11px !important;
+    margin-bottom: 5px !important;
+  }
+
+  #actionPanel button {
+    height: 23px !important;
+    min-height: 23px !important;
+    margin-bottom: 4px !important;
+    padding: 4px 6px !important;
+    font-size: 8px !important;
+  }
+
+  #minimap {
+    right: 10px !important;
+    bottom: 10px !important;
+    width: 88px !important;
+    height: 88px !important;
+    min-width: 88px !important;
+    min-height: 88px !important;
+    max-width: 88px !important;
+    max-height: 88px !important;
+    opacity: 0.82 !important;
   }
 
   #controlStatusPanel {
-    width: min(320px, calc(100vw - 28px)) !important;
-    max-width: calc(100vw - 28px) !important;
+    bottom: 8px !important;
+    width: min(320px, calc(100vw - 390px)) !important;
+    min-width: 220px !important;
+    max-height: 56px !important;
+    padding: 6px 9px !important;
+    font-size: 7.8px !important;
+    line-height: 1.15 !important;
+  }
+
+  .control-status-title {
+    font-size: 8px !important;
+  }
+
+  #controlStatusMode {
+    font-size: 9px !important;
+  }
+
+  #controlStatusHelp {
+    font-size: 7.4px !important;
   }
 
   #help.command-help-panel {
-    width: calc(100vw - 28px) !important;
-    max-width: calc(100vw - 28px) !important;
-    max-height: calc(100vh - 42px) !important;
-    padding: 20px !important;
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 32px) !important;
+    padding: 22px !important;
   }
 
   #help.command-help-panel .help-title {
-    font-size: 30px !important;
+    font-size: 28px !important;
+  }
+
+  #help.command-help-panel .help-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #help.command-help-panel .help-row {
+    grid-template-columns: 118px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  #help.command-help-panel .help-row span,
+  #help.command-help-panel .help-row p {
+    font-size: 10.5px !important;
+  }
+
+  #help.command-help-panel .help-ultimate-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #settingsPanel .settings-card,
+  .settings-card {
+    width: min(560px, calc(100vw - 32px)) !important;
+    max-width: min(560px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 32px) !important;
+  }
+
+  #stageIntelPanel:not(.hidden),
+  #aiFeedback:not(.hidden),
+  #achievementPanel:not(.hidden) {
+    width: min(620px, calc(100vw - 32px)) !important;
+    max-width: min(620px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 42px) !important;
+  }
+}
+
+
+
+@media (max-width: 900px) {
+  #wavePreview,
+  #buildPanel,
+  #eventLog {
+    display: none !important;
+  }
+
+  #hud,
+  #selectedInfo,
+  #actionPanel,
+  #minimap,
+  #controlStatusPanel {
+    transform: scale(0.88) !important;
+  }
+
+  #hud,
+  #selectedInfo,
+  #actionPanel {
+    transform-origin: left top !important;
+  }
+
+  #minimap {
+    transform-origin: right bottom !important;
+  }
+
+  #controlStatusPanel {
+    transform: translateX(-50%) scale(0.88) !important;
+    transform-origin: center bottom !important;
+  }
+
+  #quickPanelButtons {
+    transform: scale(0.88) !important;
+    transform-origin: right top !important;
+  }
+
+  #help.command-help-panel .help-grid,
+  #help.command-help-panel .help-ultimate-list {
+    grid-template-columns: 1fr !important;
   }
 
   #help.command-help-panel .help-row {
@@ -1690,50 +2292,263 @@ body.info-drawer-open #buildPanel {
     gap: 4px !important;
   }
 
-  #help.command-help-panel .help-ultimate-list {
+  .requirement-proof div {
     grid-template-columns: 1fr !important;
   }
+}
+#quickPanelButtons {
+  top: 12px !important;
+  right: 62px !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: 120 !important;
+}
 
-  .requirement-proof div {
-    grid-template-columns: 1fr;
+#settingsButton {
+  top: 12px !important;
+  right: 14px !important;
+  z-index: 125 !important;
+}
+
+#wavePreview {
+  top: 72px !important;
+  right: 166px !important;
+  width: 236px !important;
+  max-height: 42vh !important;
+  overflow-y: auto !important;
+}
+
+#buildPanel {
+  display: block !important;
+  top: 72px !important;
+  right: 18px !important;
+  width: 132px !important;
+  max-height: 38vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#buildPanel .build-title {
+  font-size: 13px !important;
+  margin-bottom: 8px !important;
+}
+
+#buildPanel button,
+#buildPanel .build-button {
+  height: 28px !important;
+  min-height: 28px !important;
+  margin-bottom: 7px !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+}
+
+@media (max-width: 1700px), (max-height: 940px) {
+  #quickPanelButtons {
+    top: 10px !important;
+    right: 52px !important;
+    gap: 6px !important;
+  }
+
+  #quickPanelButtons button {
+    min-width: 54px !important;
+    height: 27px !important;
+    padding: 0 8px !important;
+    font-size: 10px !important;
+  }
+
+  #settingsButton {
+    top: 10px !important;
+    right: 10px !important;
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  #wavePreview {
+    top: 62px !important;
+    right: 142px !important;
+    width: 214px !important;
+    max-height: 42vh !important;
+    padding: 10px !important;
+    font-size: 9px !important;
+  }
+
+  #buildPanel {
+    display: block !important;
+    top: 62px !important;
+    right: 10px !important;
+    width: 118px !important;
+    max-height: 36vh !important;
+    padding: 8px !important;
+  }
+
+  #buildPanel .build-title {
+    font-size: 11px !important;
+    margin-bottom: 7px !important;
+  }
+
+  #buildPanel button,
+  #buildPanel .build-button {
+    height: 25px !important;
+    min-height: 25px !important;
+    margin-bottom: 6px !important;
+    padding: 0 6px !important;
+    font-size: 8.6px !important;
+  }
+
+  #eventLog {
+    width: 280px !important;
+    max-height: 78px !important;
+  }
+
+  #minimap {
+    width: 104px !important;
+    height: 104px !important;
+    bottom: 100px !important;
   }
 }
-#stageIntelHardCloseButton {
-  position: absolute !important;
-  top: 14px !important;
-  right: 14px !important;
 
-  width: 38px !important;
-  height: 38px !important;
+@media (max-width: 1450px), (max-height: 820px) {
+  #eventLog {
+    display: none !important;
+  }
 
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  #quickPanelButtons {
+    top: 8px !important;
+    right: 48px !important;
+    gap: 5px !important;
+  }
 
-  border: 1px solid rgba(96, 165, 250, 0.68) !important;
-  border-radius: 999px !important;
+  #quickPanelButtons button {
+    min-width: 46px !important;
+    height: 25px !important;
+    padding: 0 7px !important;
+    font-size: 9px !important;
+  }
 
-  background: rgba(15, 23, 42, 0.96) !important;
-  color: #e5f6ff !important;
+  #quickHelpButton {
+    min-width: 34px !important;
+  }
 
-  font-size: 24px !important;
-  font-weight: 900 !important;
-  line-height: 1 !important;
+  #settingsButton {
+    top: 8px !important;
+    right: 8px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
 
-  cursor: pointer !important;
-  z-index: 10 !important;
+  #hud {
+    left: 8px !important;
+    top: 8px !important;
+    width: 150px !important;
+    max-height: 31vh !important;
+    padding: 7px 9px !important;
+    font-size: 8.2px !important;
+    line-height: 1.18 !important;
+  }
 
-  box-shadow:
-    0 0 18px rgba(56, 189, 248, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-}
+  #selectedInfo {
+    left: 8px !important;
+    bottom: 82px !important;
+    width: 150px !important;
+    max-height: 18vh !important;
+    padding: 7px 8px !important;
+    font-size: 8.2px !important;
+    line-height: 1.18 !important;
+  }
 
-#stageIntelHardCloseButton:hover {
-  color: #facc15 !important;
-  border-color: rgba(250, 204, 21, 0.85) !important;
-  transform: scale(1.04) !important;
-}
+  #actionPanel {
+    left: 8px !important;
+    bottom: 8px !important;
+    width: 150px !important;
+    padding: 7px !important;
+    font-size: 8.2px !important;
+  }
 
-#stageIntelPanel {
-  position: relative !important;
+  #actionPanel button {
+    height: 23px !important;
+    min-height: 23px !important;
+    margin-top: 4px !important;
+    padding: 4px 6px !important;
+    font-size: 8px !important;
+  }
+
+  #wavePreview {
+    top: 56px !important;
+    right: 130px !important;
+    width: 196px !important;
+    max-height: 44vh !important;
+    padding: 9px !important;
+    font-size: 8.4px !important;
+    line-height: 1.18 !important;
+  }
+
+  #wavePreview button,
+  #startWaveButton {
+    height: 24px !important;
+    min-height: 24px !important;
+    padding: 4px 6px !important;
+    font-size: 8.2px !important;
+  }
+
+  #buildPanel {
+    display: block !important;
+    top: 56px !important;
+    right: 8px !important;
+    width: 112px !important;
+    max-height: 44vh !important;
+    padding: 7px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  #buildPanel .build-title {
+    font-size: 10px !important;
+    margin-bottom: 6px !important;
+  }
+
+  #buildPanel button,
+  #buildPanel .build-button {
+    height: 23px !important;
+    min-height: 23px !important;
+    margin-bottom: 5px !important;
+    padding: 0 5px !important;
+    font-size: 7.8px !important;
+    border-radius: 7px !important;
+  }
+
+  #buildPanel .build-button span {
+    font-size: 7.6px !important;
+  }
+
+  #buildPanel .build-button.recommended::after {
+    width: 15px !important;
+    height: 15px !important;
+    right: 5px !important;
+    top: -7px !important;
+    font-size: 10px !important;
+    line-height: 15px !important;
+  }
+
+  #minimap {
+    right: 8px !important;
+    bottom: 8px !important;
+    width: 84px !important;
+    height: 84px !important;
+    opacity: 0.82 !important;
+  }
+
+  #controlStatusPanel {
+    bottom: 8px !important;
+    width: min(320px, calc(100vw - 390px)) !important;
+    min-width: 220px !important;
+    max-height: 56px !important;
+    padding: 6px 9px !important;
+    font-size: 7.8px !important;
+    line-height: 1.18 !important;
+  }
+
+  #controlStatusPanel .control-status-title {
+    font-size: 8px !important;
+  }
 }
