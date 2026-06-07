@@ -73,6 +73,7 @@ export function updateStageMusic() {
     nextTargetVolume = TARGET_VOLUME;
   }
 
+  resumePausedAudioIfNeeded();
   updateMusicFade();
 }
 
@@ -96,6 +97,21 @@ export function setStageMusicMuted(isMuted) {
   if (state.muted) {
     activeTargetVolume = 0;
     nextTargetVolume = 0;
+    return;
+  }
+
+  activeTargetVolume = TARGET_VOLUME;
+
+  if (nextAudio) {
+    nextTargetVolume = TARGET_VOLUME;
+  }
+
+  if (unlocked && shouldStageMusicPlay()) {
+    if (!activeAudio) {
+      startTrack(getCurrentTrackId());
+    } else {
+      resumePausedAudioIfNeeded();
+    }
   }
 }
 
@@ -105,11 +121,24 @@ export function toggleStageMusicMuted() {
   if (state.muted) {
     activeTargetVolume = 0;
     nextTargetVolume = 0;
-  } else {
-    activeTargetVolume = TARGET_VOLUME;
+    return false;
   }
 
-  return !state.muted;
+  activeTargetVolume = TARGET_VOLUME;
+
+  if (nextAudio) {
+    nextTargetVolume = TARGET_VOLUME;
+  }
+
+  if (unlocked && shouldStageMusicPlay()) {
+    if (!activeAudio) {
+      startTrack(getCurrentTrackId());
+    } else {
+      resumePausedAudioIfNeeded();
+    }
+  }
+
+  return true;
 }
 
 function unlockStageMusic() {
@@ -164,6 +193,16 @@ function createAudioForTrack(trackId) {
   return audio;
 }
 
+function resumePausedAudioIfNeeded() {
+  if (activeAudio && activeAudio.paused) {
+    safePlay(activeAudio);
+  }
+
+  if (nextAudio && nextAudio.paused) {
+    safePlay(nextAudio);
+  }
+}
+
 function updateMusicFade() {
   if (activeAudio) {
     activeAudio.volume = moveTowards(
@@ -184,6 +223,10 @@ function updateMusicFade() {
 
         activeTargetVolume = nextTargetVolume;
         nextTargetVolume = 0;
+
+        if (shouldStageMusicPlay()) {
+          safePlay(activeAudio);
+        }
       } else if (!shouldStageMusicPlay()) {
         activeAudio.pause();
       }
@@ -208,6 +251,10 @@ function updateMusicFade() {
 
       activeTargetVolume = TARGET_VOLUME;
       nextTargetVolume = 0;
+
+      if (shouldStageMusicPlay()) {
+        safePlay(activeAudio);
+      }
     }
   }
 }
@@ -252,7 +299,7 @@ function safePlay(audio) {
 
   if (promise && typeof promise.catch === "function") {
     promise.catch(() => {
-   
+
     });
   }
 }
@@ -275,6 +322,5 @@ function handleVisibilityChange() {
 
   if (!shouldStageMusicPlay()) return;
 
-  safePlay(activeAudio);
-  safePlay(nextAudio);
+  resumePausedAudioIfNeeded();
 }
